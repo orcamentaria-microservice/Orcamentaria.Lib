@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Orcamentaria.Lib.Domain", "Orcamentaria.Lib.Domain\Orcamentaria.Lib.Domain.csproj", "{7ED7061D-26FE-441B-9B0C-9A567D44B733}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Orcamentaria.Lib.Infrastructure", "Orcamentaria.Lib.Infrastructure\Orcamentaria.Lib.Infrastructure.csproj", "{973C825A-2AE6-4202-AAE8-C24638D720C9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7ED7061D-26FE-441B-9B0C-9A567D44B733}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7ED7061D-26FE-441B-9B0C-9A567D44B733}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7ED7061D-26FE-441B-9B0C-9A567D44B733}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7ED7061D-26FE-441B-9B0C-9A567D44B733}.Release|Any CPU.Build.0 = Release|Any CPU
+		{973C825A-2AE6-4202-AAE8-C24638D720C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{973C825A-2AE6-4202-AAE8-C24638D720C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{973C825A-2AE6-4202-AAE8-C24638D720C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{973C825A-2AE6-4202-AAE8-C24638D720C9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BF50A65-2740-4C8E-AFD6-6FE8536AE820}
+	EndGlobalSection
+EndGlobal
