@@ -2,20 +2,15 @@
 {
     public enum ResponseErrorEnum
     {
-        InvalidRequest = 1000,
-        ValidationFailed = 1001,
-        MissingRequiredField = 1002,
-        InvalidFormat = 1003,
-        Forbidden = 1200,
-        AccessDenied = 1201,
-        ResourceNotFound = 1300,
-        Conflict = 1400,
-        DuplicateRecord = 1401,
-        BusinessRuleViolation = 1500,
-        InternalError = 1600,
-        UnexpectedError = 1601,
-        DatabaseError = 1602,
-        ExternalServiceFailure = 1603,
-        NotFound = 404
+        ValidationFailed = 400,
+        Forbidden = 403,
+        AccessDenied = 401,
+        NotFound = 404,
+        Conflict = 409,
+        BusinessRuleViolation = 422,
+        InternalError = 500,
+        UnexpectedError = 503,
+        DatabaseError = 501,
+        ExternalServiceFailure = 502,
     }
 }

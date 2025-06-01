@@ -5,6 +5,8 @@
         public int Index { get; set; }
         public string Message { get; set; }
 
+        public ResponseMessage() { }
+
         public ResponseMessage(int index, string message)
         {
             this.Index = index;

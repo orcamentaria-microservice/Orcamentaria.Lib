@@ -1,21 +1,22 @@
 ﻿using FluentValidation.Results;
 
 using Orcamentaria.Lib.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Orcamentaria.Lib.Domain.Models
 {
-    public class Response<T> where T : class
+    public class Response<T>
     {
         public T? Data { get; set; }
         public bool Success { get; set; } = true;
-        public ResponseMessage? Message { get; set; }
+        public string? SimpleMessage { get; set; }
         public ResponseError? Error { get; set; }
 
         public Response()
         {
             this.Success = true;
         }
-
+        
         public Response(T data)
         {
             if(data is null)
@@ -28,10 +29,10 @@ namespace Orcamentaria.Lib.Domain.Models
             this.Data = data;
         }
 
-        public Response(T data, string message)
+        public Response(T data, string simpleMessage)
         {
             this.Data = data;
-            this.Message = new ResponseMessage(message);
+            this.SimpleMessage = simpleMessage;
         }
 
         public Response(ResponseErrorEnum errorType)

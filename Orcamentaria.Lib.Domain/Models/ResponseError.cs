@@ -8,6 +8,8 @@ namespace Orcamentaria.Lib.Domain.Models
         public string ErrorName { get; set; }
         public IEnumerable<ResponseMessage> MessageErrors { get; set; }
 
+        public ResponseError() { }
+
         public ResponseError(ResponseErrorEnum errorType) 
         {
             this.ErrorCode = errorType;

@@ -1,6 +1,4 @@
-﻿
-
-using Orcamentaria.Lib.Domain.Contexts;
+﻿using Orcamentaria.Lib.Domain.Contexts;
 
 namespace Orcamentaria.Lib.Infrastructure.Contexts
 {
