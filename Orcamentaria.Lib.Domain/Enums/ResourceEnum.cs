@@ -8,7 +8,8 @@
         EQUIPAMENT = 4,
         COUST = 5,
         ESTIMATE = 6,
-        AUTH = 7,
+        USER = 7,
         SERVICE = 8,
+        PERMISSION = 9,
     }
 }

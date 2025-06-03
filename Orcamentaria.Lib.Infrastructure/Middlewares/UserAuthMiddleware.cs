@@ -15,16 +15,18 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
         public async Task InvokeAsync(HttpContext context, IUserAuthContext userAuthContext)
         {
-            long.TryParse(context.Request.HttpContext.User.Claims
-                .Where(c => c.Type == JwtRegisteredClaimNames.Sub).First().Value, out var userId);
-            var email = context.Request.HttpContext.User.Claims
-                .Where(c => c.Type == JwtRegisteredClaimNames.Email).First().Value;
-            long.TryParse(context.Request.HttpContext.User.Claims
-                .Where(c => c.Type == "Company").First().Value, out var companyId);
+            var claims = context.Request.HttpContext.User.Claims;
 
-            userAuthContext.UserId = userId;
-            userAuthContext.UserEmail = email;
-            userAuthContext.UserCompanyId = companyId;
+            if (claims.Any())
+            {
+                long.TryParse(claims.Where(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier").First().Value, out var userId);
+                var email = claims.Where(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress").First().Value;
+                long.TryParse(claims.Where(c => c.Type == "Company").First().Value, out var companyId);
+
+                userAuthContext.UserId = userId;
+                userAuthContext.UserEmail = email;
+                userAuthContext.UserCompanyId = companyId;
+            }
 
             await _next(context);
         }
