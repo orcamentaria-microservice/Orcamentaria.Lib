@@ -1,4 +1,4 @@
-﻿namespace Orcamentaria.Lib.Domain.DTOs
+﻿namespace Orcamentaria.Lib.Domain.DTOs.ServiceRegistry
 {
     public class ServiceRegistryEndpoinsInsertDTO
     {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Domain.DTOs;
+using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
 using Orcamentaria.Lib.Domain.HostedService;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Services;
@@ -14,22 +15,35 @@ namespace Orcamentaria.Lib.Application.HostedService
     {
         private readonly IServer _server;
         private readonly IHostApplicationLifetime _lifetime;
-        private readonly IOptions<ServiceRegistryConfiguration> _serviceRegistryConfiguration;
+        private readonly ServiceRegistryConfiguration _serviceRegistryConfiguration;
+        private readonly ServiceConfiguration _serviceConfiguration;
         private readonly HttpClient _httpClient;
         private readonly IServiceRegistryService _serviceRegistryService;
+        private ServiceRegistryConfigurationEndpoint _registerEndpoint;
+        private ServiceRegistryConfigurationEndpoint _heartbeatEndpoint;
+        private readonly IMemoryCacheService _memoryCacheService;
 
         public ServiceRegistryHostedService(
             IServer server,
             IHostApplicationLifetime lifetime, 
-            IOptions<ServiceRegistryConfiguration> serviceRegistryConfiguration, 
+            IOptions<ServiceRegistryConfiguration> serviceRegistryConfiguration,
             HttpClient httpClient,
-            IServiceRegistryService serviceRegistryService)
+            IServiceRegistryService serviceRegistryService,
+            IOptions<ServiceConfiguration> serviceConfiguration,
+            IMemoryCacheService memoryCacheService)
         {
             _server = server;
             _lifetime = lifetime;
-            _serviceRegistryConfiguration = serviceRegistryConfiguration;
+            _serviceRegistryConfiguration = serviceRegistryConfiguration.Value;
             _httpClient = httpClient;
             _serviceRegistryService = serviceRegistryService;
+            _serviceConfiguration = serviceConfiguration.Value;
+            _memoryCacheService = memoryCacheService;
+
+            var endpoints = _serviceRegistryConfiguration.Endpoints;
+
+            _registerEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "register");
+            _heartbeatEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "heartbeat");
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -38,13 +52,16 @@ namespace Orcamentaria.Lib.Application.HostedService
             return Task.CompletedTask;
         }
 
-        public async void SendHeartbeat(object state)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
-            await _serviceRegistryService.SendAsync(
-                    url: $"{_serviceRegistryConfiguration.Value.BaseUrl}{_serviceRegistryConfiguration.Value.HeartbeatRoute}",
-                    content: null,
-                    method: HttpMethod.Put
-                    );
+            return Task.CompletedTask;
+        }
+
+        private async void OnStarted()
+        {
+            await SendRegisterService();
+
+            SendHeartbeat();
         }
 
         public async Task SendRegisterService()
@@ -57,7 +74,7 @@ namespace Orcamentaria.Lib.Application.HostedService
 
             var payload = new ServiceRegistryInsertDTO
             {
-                Name = _serviceRegistryConfiguration.Value.ServiceName,
+                Name = _serviceConfiguration.ServiceName,
                 BaseUrl = address!,
                 Endpoints = endpoints
             };
@@ -69,14 +86,15 @@ namespace Orcamentaria.Lib.Application.HostedService
 
                 do
                 {
-                    var result = await _serviceRegistryService.SendAsync(
-                        url: $"{_serviceRegistryConfiguration.Value.BaseUrl}{_serviceRegistryConfiguration.Value.RegistryServiceRoute}",
-                        content: payload,
-                        method: HttpMethod.Post);
+                    var result = await _serviceRegistryService.SendServiceRegister<string>(
+                        baseUrl: _serviceRegistryConfiguration.BaseUrl,
+                        endpoint: _registerEndpoint,
+                        content: payload);
 
                     if (result.Success)
                     {
                         requestFailed = false;
+                        _memoryCacheService.SetMemoryCache($"{_serviceConfiguration.ServiceName}_key", result.Data);
                         break;
                     }
 
@@ -91,7 +109,6 @@ namespace Orcamentaria.Lib.Application.HostedService
                 {
                     //Fazer log para salvar erro das tentantivas
                 }
-
             }
             catch (Exception ex)
             {
@@ -99,24 +116,34 @@ namespace Orcamentaria.Lib.Application.HostedService
             }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task SendHeartbeat()
         {
-            return Task.CompletedTask;
-        }
+            _memoryCacheService.GetMemoryCache($"{_serviceConfiguration.ServiceName}_key", out string serviceId);
 
-        private async void OnStarted()
-        {
-            await SendRegisterService();
+            _heartbeatEndpoint.Route = _heartbeatEndpoint.Route.Replace("{serviceId}", serviceId);
 
-            new Timer(SendHeartbeat, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            while (true)
+            {
+                await _serviceRegistryService.SendServiceRegister<Task>(
+                        baseUrl: _serviceRegistryConfiguration.BaseUrl,
+                        endpoint: _heartbeatEndpoint);
+
+                await Task.Delay(TimeSpan.FromSeconds(30));
+            }
+
         }
 
         private async Task<List<ServiceRegistryEndpoinsInsertDTO>> GetEndpointsFromSwaggerAsync(string swaggerUrl)
         {
             var endpoints = new List<ServiceRegistryEndpoinsInsertDTO>();
 
+            _httpClient.DefaultRequestHeaders.Add("ClientId", _serviceConfiguration.ClientId);
+            _httpClient.DefaultRequestHeaders.Add("ClientSecret", _serviceConfiguration.ClientSecret);
+
             var response = await _httpClient.GetAsync(swaggerUrl);
             response.EnsureSuccessStatusCode();
+
+            _httpClient.Dispose();
 
             var json = await response.Content.ReadAsStringAsync();
 
