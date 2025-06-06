@@ -1,6 +1,6 @@
 ﻿namespace Orcamentaria.Lib.Domain.Enums
 {
-    public enum ResponseErrorEnum
+    public enum ErrorCodeEnum
     {
         ValidationFailed = 400,
         Forbidden = 403,

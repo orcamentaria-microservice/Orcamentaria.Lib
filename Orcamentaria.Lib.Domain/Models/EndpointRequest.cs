@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Orcamentaria.Lib.Domain.Models
 {
@@ -10,6 +11,5 @@ namespace Orcamentaria.Lib.Domain.Models
 
         [JsonIgnore]
         public int Order { get; set; } = 0;
-
     }
 }

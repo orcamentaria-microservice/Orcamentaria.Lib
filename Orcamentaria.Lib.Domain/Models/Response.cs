@@ -1,7 +1,6 @@
 ﻿using FluentValidation.Results;
 
 using Orcamentaria.Lib.Domain.Enums;
-using System.Text.Json.Serialization;
 
 namespace Orcamentaria.Lib.Domain.Models
 {
@@ -22,7 +21,7 @@ namespace Orcamentaria.Lib.Domain.Models
             if(data is null)
             {
                 this.Success = false;
-                this.Error = new ResponseError(ResponseErrorEnum.NotFound);
+                this.Error = new ResponseError(ErrorCodeEnum.NotFound);
                 return;
             }
 
@@ -35,18 +34,19 @@ namespace Orcamentaria.Lib.Domain.Models
             this.SimpleMessage = simpleMessage;
         }
 
-        public Response(ResponseErrorEnum errorType)
+        public Response(ErrorCodeEnum errorType)
         {
             this.Success = false;
             this.Error = new ResponseError(errorType);
         }
 
-        public Response(ResponseErrorEnum errorType, string message)
+        public Response(ErrorCodeEnum errorType, string message)
         {
             this.Success = false;
             this.Error = new ResponseError(errorType, message);
         }
-        public Response(ResponseErrorEnum errorType, string[] messages)
+
+        public Response(ErrorCodeEnum errorType, string[] messages)
         {
             this.Success = false;
             this.Error = new ResponseError(errorType, messages);
@@ -56,11 +56,11 @@ namespace Orcamentaria.Lib.Domain.Models
         {
             this.Success = false;
             this.Error = new ResponseError(
-                ResponseErrorEnum.ValidationFailed, 
+                ErrorCodeEnum.ValidationFailed, 
                 result.Errors.Select(e => e.ErrorMessage).ToArray());
         }
 
-        public Response(ResponseErrorEnum errorType, ValidationResult result)
+        public Response(ErrorCodeEnum errorType, ValidationResult result)
         {
             this.Success = false;
             this.Error = new ResponseError(

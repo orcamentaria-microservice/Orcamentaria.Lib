@@ -8,7 +8,7 @@ namespace Orcamentaria.Lib.Domain.Models
         public int Order { get; set; }
         public string ServiceName { get; set; }
         public string BaseUrl { get; set; }
-        public StatetService State { get; set; }
+        public StateService State { get; set; }
         public IEnumerable<EndpointRequest> Endpoints { get; set; }
 
         public ServiceRegistry() { }

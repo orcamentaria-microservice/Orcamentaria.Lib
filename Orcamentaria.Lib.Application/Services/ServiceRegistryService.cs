@@ -58,14 +58,14 @@ namespace Orcamentaria.Lib.Application.Services
 
                 if (!forceTokenGeneration && 
                     !response.Content.Success &&
-                    response.Content.Error.ErrorCode == ResponseErrorEnum.AccessDenied)
+                    response.Content.Error.ErrorCode == ErrorCodeEnum.AccessDenied)
                     return await SendServiceRegister<T>(baseUrl, endpoint, content, true);
 
                 return response.Content;
             }
             catch (Exception ex)
             {
-                return new Response<T>(ResponseErrorEnum.ExternalServiceFailure, ex.Message);
+                return new Response<T>(ErrorCodeEnum.ExternalServiceFailure, ex.Message);
             }
         }
     }

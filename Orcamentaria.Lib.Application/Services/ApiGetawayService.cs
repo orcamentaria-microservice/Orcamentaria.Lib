@@ -64,7 +64,7 @@ namespace Orcamentaria.Lib.Application.Services
                     content);
 
             if(!response.Success)
-                return new Response<T>((ResponseErrorEnum)response.StatusCode, response.MessageError);
+                return new Response<T>((ErrorCodeEnum)response.StatusCode, response.MessageError);
 
             return response.Content;
         }
