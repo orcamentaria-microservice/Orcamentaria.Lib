@@ -4,6 +4,7 @@ using Orcamentaria.Lib.Domain.Providers;
 using Orcamentaria.Lib.Domain.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Orcamentaria.Lib.Domain.Models.Configurations;
+using Orcamentaria.Lib.Domain.Exceptions;
 
 namespace Orcamentaria.Lib.Application.Services
 {
@@ -33,39 +34,40 @@ namespace Orcamentaria.Lib.Application.Services
         {
             var tokenAuth = "";
 
-            if(endpoint.RequiredAuthorization)
-            {
-                if (forceTokenGeneration || !_memoryCacheService.GetMemoryCache(TOKEN_KEY, out string? tokenService))
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
-                    tokenService = await tokenProvider.GetTokenServiceAsync();
-
-                    if (String.IsNullOrWhiteSpace(tokenService))
-                        throw new Exception("Token não gerado.");
-
-                    tokenAuth = tokenService;
-                    _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
-                }
-            }
-
             try
             {
+                if (endpoint.RequiredAuthorization)
+                {
+                    if (forceTokenGeneration || !_memoryCacheService.GetMemoryCache(TOKEN_KEY, out string? tokenService))
+                    {
+                        using var scope = _scopeFactory.CreateScope();
+                        var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
+                        tokenService = await tokenProvider.GetTokenServiceAsync();
+
+                        if (String.IsNullOrWhiteSpace(tokenService))
+                            throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
+
+                        tokenAuth = tokenService;
+                        _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
+                    }
+                }
+
                 var response = await _httpClientService.SendAsync<Response<T>>(baseUrl, endpoint, tokenAuth, content);
 
-                if (!response.Success)
-                    throw new Exception();
-
-                if (!forceTokenGeneration && 
+                if (!forceTokenGeneration &&
                     !response.Content.Success &&
                     response.Content.Error.ErrorCode == ErrorCodeEnum.AccessDenied)
                     return await SendServiceRegister<T>(baseUrl, endpoint, content, true);
 
                 return response.Content;
             }
+            catch (DefaultException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                return new Response<T>(ErrorCodeEnum.ExternalServiceFailure, ex.Message);
+                throw new UnexpectedException(ex.Message, ex);
             }
         }
     }

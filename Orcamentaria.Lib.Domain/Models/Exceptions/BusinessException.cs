@@ -3,24 +3,24 @@ using Orcamentaria.Lib.Domain.Exceptions;
 
 namespace Orcamentaria.Lib.Domain.Models.Exceptions
 {
-    public class InfoException : DefaultException
+    public class BusinessException : DefaultException
     {
-        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Info;
+        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Warning;
 
-        public InfoException(
+        public BusinessException(
             string message,
             ErrorCodeEnum errorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel) :
-            base(ExceptionTypeEnum.Info, severity, (int)errorCode, message)
+            base(ExceptionTypeEnum.Business, severity, (int)errorCode, message)
         {
         }
 
-        public InfoException(
+        public BusinessException(
             string message,
             System.Exception exception,
             ErrorCodeEnum errorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel)
-            : base(ExceptionTypeEnum.Info, severity, (int)errorCode, message, exception)
+            : base(ExceptionTypeEnum.Business, severity, (int)errorCode, message, exception)
         {
         }
     }

@@ -10,31 +10,31 @@ namespace Orcamentaria.Lib.Domain.Models
 
         public ResponseError() { }
 
-        public ResponseError(ErrorCodeEnum errorType) 
+        public ResponseError(ErrorCodeEnum errorType)
         {
-            this.ErrorCode = errorType;
-            this.ErrorName = errorType.ToString();
+            ErrorCode = errorType;
+            ErrorName = errorType.ToString();
         }
 
         public ResponseError(ErrorCodeEnum errorType, IEnumerable<ResponseMessage> messageErrors)
         {
-            this.ErrorCode = errorType;
-            this.ErrorName = errorType.ToString();
-            this.MessageErrors = messageErrors;
+            ErrorCode = errorType;
+            ErrorName = errorType.ToString();
+            MessageErrors = messageErrors;
         }
 
         public ResponseError(ErrorCodeEnum errorType, string message)
         {
-            this.ErrorCode = errorType;
-            this.ErrorName = errorType.ToString();
-            this.MessageErrors = new List<ResponseMessage>() { new ResponseMessage(message) };
+            ErrorCode = errorType;
+            ErrorName = errorType.ToString();
+            MessageErrors = new List<ResponseMessage>() { new ResponseMessage(message) };
         }
 
         public ResponseError(ErrorCodeEnum errorType, string[] messages)
         {
-            this.ErrorCode = errorType;
-            this.ErrorName = errorType.ToString();
-            this.MessageErrors = messages.Select((message, index) => new ResponseMessage(index, message));
+            ErrorCode = errorType;
+            ErrorName = errorType.ToString();
+            MessageErrors = messages.Select((message, index) => new ResponseMessage(index, message));
         }
     }
 }

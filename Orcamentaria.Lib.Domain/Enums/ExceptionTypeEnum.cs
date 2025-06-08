@@ -11,5 +11,6 @@
         Configuration = 7,
         Database = 8,
         Info = 9,
+        Default = 10
     }
 }

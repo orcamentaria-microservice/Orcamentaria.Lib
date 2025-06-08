@@ -9,8 +9,8 @@
 
         public ResponseMessage(int index, string message)
         {
-            this.Index = index;
-            this.Message = message;
+            Index = index;
+            Message = message;
         }
 
         public ResponseMessage(string message)

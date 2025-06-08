@@ -4,14 +4,14 @@ namespace Orcamentaria.Lib.Domain.Exceptions
 {
     public abstract class DefaultException : System.Exception
     {
-        public ExceptionTypeEnum? Type { get; }
-        public SeverityLevelEnum? Severity { get; }
-        public ErrorCodeEnum? ErrorCode { get; }
+        public ExceptionTypeEnum? Type { get; } = ExceptionTypeEnum.Default;
+        public SeverityLevelEnum? Severity { get; } = SeverityLevelEnum.Error;
+        public int? ErrorCode { get; }
 
         protected DefaultException(
             ExceptionTypeEnum? type,
             SeverityLevelEnum? severity,
-            ErrorCodeEnum? errorCode,
+            int? errorCode,
             string message) : base(message)
         {
             Type = type;
@@ -22,7 +22,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
         protected DefaultException(
             ExceptionTypeEnum? type,
             SeverityLevelEnum? severity,
-            ErrorCodeEnum? errorCode,
+            int? errorCode,
             string message,
             System.Exception exception) : base(message, exception)
         {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Orcamentaria.APIGetaway.Domain.DTOs.Authentication;
+using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Providers;
 using Orcamentaria.Lib.Domain.Services;
@@ -21,20 +22,17 @@ namespace Orcamentaria.Lib.Application.Providers
 
         public async Task<string> GetTokenServiceAsync()
         {
-            var apiGetawayConfiguration = _apiGetawayService.GetResource("AuthService", "ServiceAuthenticate");
-
-            if (apiGetawayConfiguration is null)
-                return String.Empty;
-
-            var resource = apiGetawayConfiguration.Resources.First();
-
-            IDictionary<string, string> @params = new Dictionary<string, string>();
-
-            @params.Add("clientId", _serviceConfiguration.ClientId);
-            @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
-
             try
             {
+                var apiGetawayConfiguration = _apiGetawayService.GetApiGetawayConfiguration("AuthService", "ServiceAuthenticate");
+
+                var resource = apiGetawayConfiguration.Resources.First();
+
+                IDictionary<string, string> @params = new Dictionary<string, string>();
+
+                @params.Add("clientId", _serviceConfiguration.ClientId);
+                @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
+
                 var response = await _apiGetawayService.Routing<AuthenticationServiceResponseDTO>(
                     apiGetawayConfiguration.BaseUrl,
                     resource.ServiceName,
@@ -43,14 +41,15 @@ namespace Orcamentaria.Lib.Application.Providers
                     @params,
                     null);
 
-                if (!response.Success)
-                    return String.Empty;
-
                 return response.Data.Token;
             }
-            catch (Exception)
+            catch (DefaultException)
             {
-                return String.Empty;
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new UnexpectedException(ex.Message, ex);
             }
         }
     }

@@ -89,15 +89,18 @@ namespace Orcamentaria.Lib.Infrastructure
             if (configuration.GetSection("ServiceRegistryConfiguration") is null)
                 throw new Exception("Serviço Registry não configurado.");
 
+            services.Configure<ServiceConfiguration>(configuration.GetSection("ServiceConfiguration"));
             services.Configure<ServiceRegistryConfiguration>(configuration.GetSection("ServiceRegistryConfiguration"));
             services.Configure<ApiGetawayConfiguration>(configuration.GetSection("ApiGetawayConfiguration"));
 
+            services.AddScoped<ILogExceptionService, LogExceptionService>();
+
             services.AddSingleton<ITokenProvider, TokenProvider>();
             services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
-            services.AddSingleton<IServiceRegistryService, ServiceRegistryService>();
             services.AddSingleton<IRsaService, RsaService>();
-            services.AddSingleton<IHttpClientService, HttpClientService>();
             services.AddSingleton<IApiGetawayService, ApiGetawayService>();
+            services.AddSingleton<IServiceRegistryService, ServiceRegistryService>();
+            services.AddSingleton<IHttpClientService, HttpClientService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -160,6 +163,7 @@ namespace Orcamentaria.Lib.Infrastructure
             app.UseCors(MyAllowSpecificOrigins);
 
             app.UseAuthentication();
+            app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseMiddleware<UserAuthMiddleware>();
             app.UseAuthorization();
 

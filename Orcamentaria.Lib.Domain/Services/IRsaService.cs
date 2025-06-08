@@ -1,5 +1,4 @@
 ﻿using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
 
 namespace Orcamentaria.Lib.Domain.Services
 {

@@ -2,6 +2,6 @@
 {
     public class ApiGetawayConfiguration : ApiConfiguration
     {
-        public IEnumerable<ResourceConfiguration> Resources { get; set; }
+        public IEnumerable<ResourceConfiguration> Resources { get; set; } = new List<ResourceConfiguration>();
     }
 }

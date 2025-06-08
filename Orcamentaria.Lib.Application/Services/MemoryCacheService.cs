@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
+using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Services;
 
 namespace Orcamentaria.Lib.Application.Services
@@ -14,17 +15,33 @@ namespace Orcamentaria.Lib.Application.Services
 
         public bool GetMemoryCache(string cacheKey, out string? returnValue)
         {
-            if (_memoryCache.TryGetValue(cacheKey, out string? tokenCache))
+            try
             {
-                returnValue = tokenCache;
-                return tokenCache != null;
-            }
+                if (_memoryCache.TryGetValue(cacheKey, out string? tokenCache))
+                {
+                    returnValue = tokenCache;
+                    return true;
+                }
 
-            returnValue = null;
-            return false;
+                returnValue = null;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                throw new UnexpectedException(ex.Message, ex);
+            }
         }
 
         public void SetMemoryCache(string cacheKey, string value)
-            => _memoryCache.Set(cacheKey, value);
+        {
+            try
+            {
+                _memoryCache.Set(cacheKey, value);
+            }
+            catch (Exception ex)
+            {
+                throw new UnexpectedException(ex.Message, ex);
+            }
+        }
     }
 }

@@ -5,13 +5,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>Orcamentaria.Lib.Domain</PackageId>
-	<Version>9.2.8</Version>
+	<Version>9.3.3</Version>
 	<Authors>Marcelo Fernando</Authors>
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.11.0" />
   </ItemGroup>
 

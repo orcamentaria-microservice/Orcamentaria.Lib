@@ -12,7 +12,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
             string message,
             ErrorCodeEnum? errorCode = defaultErrorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel) : 
-            base(ExceptionTypeEnum.Unauthorized, severity, errorCode, message)
+            base(ExceptionTypeEnum.Unauthorized, severity, (int)errorCode, message)
         {
         }
 
@@ -21,7 +21,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
             System.Exception exception,
             ErrorCodeEnum? errorCode = defaultErrorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel) : 
-            base(ExceptionTypeEnum.Unauthorized, severity, errorCode, message, exception)
+            base(ExceptionTypeEnum.Unauthorized, severity, (int)errorCode, message, exception)
         {
         }
     }

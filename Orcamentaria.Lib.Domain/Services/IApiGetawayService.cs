@@ -13,6 +13,6 @@ namespace Orcamentaria.Lib.Domain.Services
             IDictionary<string, string>? @params,
             object? payload);
 
-        ApiGetawayConfiguration? GetResource(string serviceName, string endpointName);
+        ApiGetawayConfiguration GetApiGetawayConfiguration(string serviceName, string endpointName);
     }
 }

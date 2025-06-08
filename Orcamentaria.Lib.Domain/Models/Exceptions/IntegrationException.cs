@@ -1,27 +1,27 @@
 ﻿
 using Orcamentaria.Lib.Domain.Enums;
+using System.Net;
 
 namespace Orcamentaria.Lib.Domain.Exceptions
 {
     public class IntegrationException : DefaultException
     {
         const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Critical;
-        const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.ExternalServiceFailure;
 
         public IntegrationException(
             string message,
-            ErrorCodeEnum? errorCode = defaultErrorCode,
+            HttpStatusCode errorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel) : 
-            base(ExceptionTypeEnum.Integration, severity, errorCode, message)
+            base(ExceptionTypeEnum.Integration, severity, (int)errorCode, message)
         {
         }
 
         public IntegrationException(
             string message, 
             System.Exception exception,
-            ErrorCodeEnum? errorCode = defaultErrorCode,
+            HttpStatusCode errorCode,
             SeverityLevelEnum? severity = defaultSeverityLevel) 
-            : base(ExceptionTypeEnum.Integration, severity, errorCode, message, exception)
+            : base(ExceptionTypeEnum.Integration, severity, (int)errorCode, message, exception)
         {
         }
     }
