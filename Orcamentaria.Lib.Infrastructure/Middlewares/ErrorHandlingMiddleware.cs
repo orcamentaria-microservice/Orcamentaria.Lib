@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
+using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Services;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Orcamentaria.Lib.Infrastructure.Middlewares
@@ -36,7 +39,34 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
         public async Task HandleExceptionAsync(HttpContext context, DefaultException ex)
         {
-            await _logExceptionService.ResolveLog(ex, context);
+            
+            context.Request.Headers.TryGetValue("RequestId", out StringValues requestId);
+            var request = context.Request;
+
+            string body = "";
+            request.EnableBuffering();
+            request.Body.Position = 0;
+
+            using (var reader = new StreamReader(request.Body, Encoding.UTF8, true, 1024, true))
+            {
+                body = await reader.ReadToEndAsync();
+
+                if (String.IsNullOrEmpty(body))
+                    body = "{}";
+            }
+
+            var origin = new RequestExceptionOrigin
+            {
+                Id = requestId.FirstOrDefault(),
+                Type = OriginEnum.External,
+                Host = request?.Host.ToString(),
+                Route = request?.Path,
+                Method = request?.Method,
+                Body = JsonSerializer.Serialize(body),
+                Query = JsonSerializer.Serialize(request?.Query)
+            };
+
+            await _logExceptionService.ResolveLog(ex, origin);
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)ex.ErrorCode;

@@ -1,6 +1,6 @@
-﻿namespace Orcamentaria.Lib.Domain.Models.@Logs
+﻿namespace Orcamentaria.Lib.Domain.Models.Logs
 {
-    public class RequestLog
+    public class RequestExceptionOrigin  : ExceptionOrigin
     {
         public string Id { get; set; }
         public string Host { get; set; }

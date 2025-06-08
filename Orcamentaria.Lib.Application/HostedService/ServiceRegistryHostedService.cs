@@ -3,14 +3,13 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Orcamentaria.Lib.Domain.DTOs;
 using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.HostedService;
-using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Exceptions;
+using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Services;
 using System.Net;
 using System.Text.Json;
@@ -79,7 +78,13 @@ namespace Orcamentaria.Lib.Application.HostedService
                 var scope = _serviceScopeFactory.CreateScope();
                 var logExceptionService = scope.ServiceProvider.GetService<ILogExceptionService>();
 
-                logExceptionService.ResolveLog(ex);
+                var origin = new ServiceExceptionOrigin
+                {
+                    Type = OriginEnum.Internal,
+                    ProcessName = "HostedService"
+                };
+
+                logExceptionService.ResolveLog(ex, origin);
             }
         }
 

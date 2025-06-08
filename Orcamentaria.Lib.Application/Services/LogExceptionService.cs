@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
+﻿using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Logs;
@@ -22,40 +20,10 @@ namespace Orcamentaria.Lib.Application.Services
             _serviceConfiguration = serviceConfiguration.Value;
         }
 
-        public async Task ResolveLog(DefaultException ex, HttpContext? context = null)
+        public async Task ResolveLog(DefaultException ex, ExceptionOrigin origin)
         {
             var stackTrace = new StackTrace(ex, true);
             var frame = stackTrace.GetFrame(0);
-
-            RequestLog requestLog = null;
-
-            if (context is not null)
-            {
-                context.Request.Headers.TryGetValue("RequestId", out StringValues requestId);
-                var request = context.Request;
-                
-                string body = "";
-                request.EnableBuffering();
-                request.Body.Position = 0;
-
-                using (var reader = new StreamReader(request.Body, Encoding.UTF8, true, 1024, true))
-                {
-                    body = await reader.ReadToEndAsync();
-
-                    if (String.IsNullOrEmpty(body))
-                        body = "{}";
-                }
-
-                requestLog = new RequestLog
-                {
-                    Id = requestId.FirstOrDefault(),
-                    Host = request?.Host.ToString(),
-                    Route = request?.Path,
-                    Method = request?.Method,
-                    Body = JsonSerializer.Serialize(body),
-                    Query = JsonSerializer.Serialize(request?.Query)
-                };
-            }
 
             var exceptionLog = new ExceptionLog
             {
@@ -64,7 +32,7 @@ namespace Orcamentaria.Lib.Application.Services
                 Code = ex.ErrorCode  ?? 500,
                 Type = ex.Type.ToString()!,
                 Severity = ex.Severity.ToString()!,
-                Request = requestLog,
+                Origin = origin,
                 Place = new PlaceException
                 {
                     ServiceName = _serviceConfiguration.ServiceName,

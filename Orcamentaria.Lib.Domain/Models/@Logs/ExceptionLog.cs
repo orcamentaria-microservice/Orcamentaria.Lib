@@ -2,7 +2,7 @@
 {
     public class ExceptionLog
     {
-        public RequestLog? Request { get; set; }
+        public ExceptionOrigin Origin { get; set; }
         public string Type { get; set; }
         public string Severity { get; set; }
         public int Code { get; set; }
