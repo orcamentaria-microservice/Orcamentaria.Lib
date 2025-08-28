@@ -5,7 +5,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
 {
     public class ConfigurationException : DefaultException
     {
-        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Error;
+        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Critical;
         const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.InternalError;
 
         public ConfigurationException(

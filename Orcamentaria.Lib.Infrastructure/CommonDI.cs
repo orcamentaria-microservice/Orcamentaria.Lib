@@ -2,7 +2,7 @@
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Orcamentaria.Lib.Application.HostedService;
+using Orcamentaria.Lib.Application.HostedServices;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Application.Providers;
 using Orcamentaria.Lib.Domain.Providers;
@@ -17,6 +17,9 @@ using Orcamentaria.Lib.Infrastructure.Contexts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
+using Orcamentaria.Lib.Domain.Enums;
+using Orcamentaria.Lib.Domain.Models.Logs;
+using Orcamentaria.Lib.Domain.Exceptions;
 
 namespace Orcamentaria.Lib.Infrastructure
 {
@@ -28,7 +31,8 @@ namespace Orcamentaria.Lib.Infrastructure
             string serviceName,
             string apiVersion,
             IServiceCollection services,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            Action customServices)
         {
             services.AddMemoryCache();
             services.AddHttpClient();
@@ -93,8 +97,8 @@ namespace Orcamentaria.Lib.Infrastructure
             services.Configure<ServiceRegistryConfiguration>(configuration.GetSection("ServiceRegistryConfiguration"));
             services.Configure<ApiGetawayConfiguration>(configuration.GetSection("ApiGetawayConfiguration"));
 
-            services.AddScoped<ILogExceptionService, LogExceptionService>();
-
+            services.AddSingleton<ILogService, LogService>();
+            services.AddSingleton<IPublishMessageBrokerService>(_ => new RabbitMqPublishService("localhost"));
             services.AddSingleton<ITokenProvider, TokenProvider>();
             services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
             services.AddSingleton<IRsaService, RsaService>();
@@ -119,6 +123,23 @@ namespace Orcamentaria.Lib.Infrastructure
                     IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), "public_key_user.pem")
                 };
             });
+
+            try
+            {
+                customServices?.Invoke();
+            }
+            catch (DefaultException ex)
+            {
+                var logService = services.BuildServiceProvider().GetService<ILogService>();
+
+                var origin = new ServiceExceptionOrigin
+                {
+                    Type = OriginEnum.Internal,
+                    ProcessName = "Dependency Injection"
+                };
+
+                logService.ResolveLogAsync(ex, origin);
+            }
         }
 
         public static void ConfigureCommon(
@@ -165,6 +186,7 @@ namespace Orcamentaria.Lib.Infrastructure
             app.UseAuthentication();
             app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseMiddleware<UserAuthMiddleware>();
+            app.UseMiddleware<RequestMiddleware>();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

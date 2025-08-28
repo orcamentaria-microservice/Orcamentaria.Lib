@@ -47,9 +47,9 @@ namespace Orcamentaria.Lib.Application.Services
                         if (String.IsNullOrWhiteSpace(tokenService))
                             throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
 
-                        tokenAuth = tokenService;
                         _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
                     }
+                    tokenAuth = tokenService;
                 }
 
                 var response = await _httpClientService.SendAsync<Response<T>>(baseUrl, endpoint, tokenAuth, content);

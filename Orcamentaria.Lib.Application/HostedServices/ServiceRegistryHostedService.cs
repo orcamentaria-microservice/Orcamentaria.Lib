@@ -1,12 +1,11 @@
 ﻿using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
-using Orcamentaria.Lib.Domain.HostedService;
+using Orcamentaria.Lib.Domain.HostedServices;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Logs;
@@ -14,30 +13,31 @@ using Orcamentaria.Lib.Domain.Services;
 using System.Net;
 using System.Text.Json;
 
-namespace Orcamentaria.Lib.Application.HostedService
+namespace Orcamentaria.Lib.Application.HostedServices
 {
     public class ServiceRegistryHostedService : IServiceRegistryHostedService, IHostedService
     {
-        private readonly IServer _server;
-        private readonly IHostApplicationLifetime _lifetime;
+        private readonly IServiceRegistryService _serviceRegistryService;
+        private readonly IMemoryCacheService _memoryCacheService;
+        private readonly ILogService _logService;
         private readonly ServiceRegistryConfiguration _serviceRegistryConfiguration;
         private readonly ServiceConfiguration _serviceConfiguration;
+        private readonly IServer _server;
+        private readonly IHostApplicationLifetime _lifetime;
         private readonly HttpClient _httpClient;
-        private readonly IServiceRegistryService _serviceRegistryService;
+
         private ServiceRegistryConfigurationEndpoint _registerEndpoint;
         private ServiceRegistryConfigurationEndpoint _heartbeatEndpoint;
-        private readonly IMemoryCacheService _memoryCacheService;
-        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         public ServiceRegistryHostedService(
-            IServer server,
-            IHostApplicationLifetime lifetime, 
-            IOptions<ServiceRegistryConfiguration> serviceRegistryConfiguration,
-            HttpClient httpClient,
+            IMemoryCacheService memoryCacheService,
+            ILogService logService,
             IServiceRegistryService serviceRegistryService,
             IOptions<ServiceConfiguration> serviceConfiguration,
-            IMemoryCacheService memoryCacheService,
-            IServiceScopeFactory serviceScopeFactory)
+            IOptions<ServiceRegistryConfiguration> serviceRegistryConfiguration,
+            IServer server,
+            IHostApplicationLifetime lifetime, 
+            HttpClient httpClient)
         {
             _server = server;
             _lifetime = lifetime;
@@ -46,12 +46,12 @@ namespace Orcamentaria.Lib.Application.HostedService
             _serviceRegistryService = serviceRegistryService;
             _serviceConfiguration = serviceConfiguration.Value;
             _memoryCacheService = memoryCacheService;
-            _serviceScopeFactory = serviceScopeFactory;
 
             var endpoints = _serviceRegistryConfiguration.Endpoints;
 
             _registerEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "register");
             _heartbeatEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "heartbeat");
+            _logService = logService;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -75,16 +75,13 @@ namespace Orcamentaria.Lib.Application.HostedService
             }
             catch (DefaultException ex)
             {
-                var scope = _serviceScopeFactory.CreateScope();
-                var logExceptionService = scope.ServiceProvider.GetService<ILogExceptionService>();
-
                 var origin = new ServiceExceptionOrigin
                 {
                     Type = OriginEnum.Internal,
                     ProcessName = "HostedService"
                 };
 
-                logExceptionService.ResolveLog(ex, origin);
+                await _logService.ResolveLogAsync(ex, origin);
             }
         }
 

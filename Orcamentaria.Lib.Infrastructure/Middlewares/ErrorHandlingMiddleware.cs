@@ -15,11 +15,11 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
     public class ErrorHandlingMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly ILogExceptionService _logExceptionService;
+        private readonly ILogService _logExceptionService;
 
         public ErrorHandlingMiddleware(
             RequestDelegate next, 
-            ILogExceptionService logExceptionService)
+            ILogService logExceptionService)
         {
             _next = next;
             _logExceptionService = logExceptionService;
@@ -66,7 +66,7 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 Query = JsonSerializer.Serialize(request?.Query)
             };
 
-            await _logExceptionService.ResolveLog(ex, origin);
+            await _logExceptionService.ResolveLogAsync(ex, origin);
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)ex.ErrorCode;

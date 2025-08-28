@@ -3,24 +3,25 @@ using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Services;
-using RabbitMQ.Client;
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 
 namespace Orcamentaria.Lib.Application.Services
 {
-    public class LogExceptionService : ILogExceptionService
+    public class LogService : ILogService
     {
         private readonly ServiceConfiguration _serviceConfiguration;
+        private readonly IPublishMessageBrokerService _publishMessageBrokerService;
 
-        public LogExceptionService(
-            IOptions<ServiceConfiguration> serviceConfiguration)
+        public LogService(
+            IOptions<ServiceConfiguration> serviceConfiguration,
+            IPublishMessageBrokerService publishMessageBrokerService)
         {
             _serviceConfiguration = serviceConfiguration.Value;
+            _publishMessageBrokerService = publishMessageBrokerService;
         }
 
-        public async Task ResolveLog(DefaultException ex, ExceptionOrigin origin)
+        public async Task ResolveLogAsync(DefaultException ex, ExceptionOrigin origin)
         {
             var stackTrace = new StackTrace(ex, true);
             var frame = stackTrace.GetFrame(0);
@@ -29,7 +30,7 @@ namespace Orcamentaria.Lib.Application.Services
             {
                 Date = DateTime.Now,
                 Message = ex.Message,
-                Code = ex.ErrorCode  ?? 500,
+                Code = ex.ErrorCode ?? 500,
                 Type = ex.Type.ToString()!,
                 Severity = ex.Severity.ToString()!,
                 Origin = origin,
@@ -42,16 +43,13 @@ namespace Orcamentaria.Lib.Application.Services
                 }
             };
 
-            var message = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(exceptionLog));
-
-            var factory = new ConnectionFactory { HostName = "localhost" };
-            using var connection = await factory.CreateConnectionAsync();
-            using var channel = await connection.CreateChannelAsync();
-
-            await channel.QueueDeclareAsync(queue: "exception_log", durable: false, exclusive: false, autoDelete: false,
-                arguments: null);
-
-            await channel.BasicPublishAsync(exchange: string.Empty, routingKey: "exception_log", body: message);
+            var routingKey = $"error.{ex.Severity.ToString().ToLower()}";
+;
+            await _publishMessageBrokerService.SendMessageToTopicExchange(
+                message: JsonSerializer.Serialize(exceptionLog), 
+                exchange: "error", 
+                routingKey: routingKey,
+                binds: ["*", "critical"]);
         }
 
         private string GetFunctionName(StackFrame frame)
