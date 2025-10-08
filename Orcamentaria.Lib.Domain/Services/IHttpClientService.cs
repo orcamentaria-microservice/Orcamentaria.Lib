@@ -7,7 +7,6 @@ namespace Orcamentaria.Lib.Domain.Services
         Task<HttpResponse<T>> SendAsync<T>(
            string baseUrl,
            EndpointRequest endpoint,
-           string? tokenAuth = null,
-           object? content = null);
+           OptionsRequest? options = null);
     }
 }

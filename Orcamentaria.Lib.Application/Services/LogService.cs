@@ -1,10 +1,14 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Orcamentaria.Lib.Domain.Contexts;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Services;
 using System.Diagnostics;
 using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Orcamentaria.Lib.Application.Services
 {
@@ -12,22 +16,28 @@ namespace Orcamentaria.Lib.Application.Services
     {
         private readonly ServiceConfiguration _serviceConfiguration;
         private readonly IPublishMessageBrokerService _publishMessageBrokerService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public LogService(
             IOptions<ServiceConfiguration> serviceConfiguration,
-            IPublishMessageBrokerService publishMessageBrokerService)
+            IPublishMessageBrokerService publishMessageBrokerService,
+            IHttpContextAccessor httpContextAccessor)
         {
             _serviceConfiguration = serviceConfiguration.Value;
             _publishMessageBrokerService = publishMessageBrokerService;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task ResolveLogAsync(DefaultException ex, ExceptionOrigin origin)
         {
+            var requestContext = GetContext();
             var stackTrace = new StackTrace(ex, true);
             var frame = stackTrace.GetFrame(0);
 
             var exceptionLog = new ExceptionLog
             {
+                TraceId = requestContext is null ? Guid.NewGuid().ToString() : requestContext.RequestId,
+                TraceOrderId = requestContext is null ? "0" : requestContext.RequestOrderId.ToString(),
                 Date = DateTime.Now,
                 Message = ex.Message,
                 Code = ex.ErrorCode ?? 500,
@@ -67,6 +77,11 @@ namespace Orcamentaria.Lib.Application.Services
             }
 
             return method.Name;
+        }
+
+        private IRequestContext GetContext()
+        {
+            return _httpContextAccessor.HttpContext?.RequestServices.GetService<IRequestContext>();
         }
     }
 }

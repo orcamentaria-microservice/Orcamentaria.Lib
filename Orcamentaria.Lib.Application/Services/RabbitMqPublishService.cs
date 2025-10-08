@@ -45,7 +45,7 @@ namespace Orcamentaria.Lib.Application.Services
 
             await _channel.QueueDeclareAsync(
                 queue: queue, 
-                durable: false, 
+                durable: true, 
                 exclusive: false, 
                 autoDelete: false,
                 arguments: null);

@@ -1,7 +1,11 @@
-﻿namespace Orcamentaria.Lib.Domain.Models.Logs
+﻿using System.Text.Json;
+
+namespace Orcamentaria.Lib.Domain.Models.Logs
 {
     public class ExceptionLog
     {
+        public string TraceId { get; set; }
+        public string TraceOrderId { get; set; }
         public ExceptionOrigin Origin { get; set; }
         public string Type { get; set; }
         public string Severity { get; set; }

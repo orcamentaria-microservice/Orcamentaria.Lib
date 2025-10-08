@@ -52,7 +52,14 @@ namespace Orcamentaria.Lib.Application.Services
                     tokenAuth = tokenService;
                 }
 
-                var response = await _httpClientService.SendAsync<Response<T>>(baseUrl, endpoint, tokenAuth, content);
+                var response = await _httpClientService.SendAsync<Response<T>>(
+                    baseUrl: baseUrl, 
+                    endpoint: endpoint, 
+                    options: new OptionsRequest
+                    {
+                        TokenAuth = tokenAuth,
+                        Content = content
+                    });
 
                 if (!forceTokenGeneration &&
                     !response.Content.Success &&

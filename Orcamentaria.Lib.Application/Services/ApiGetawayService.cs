@@ -77,8 +77,11 @@ namespace Orcamentaria.Lib.Application.Services
                 var response = await _httpClientService.SendAsync<Response<T>>(
                         baseUrl: baseUrl,
                         endpoint: endpoint,
-                        token,
-                        content);
+                        options: new OptionsRequest
+                        {
+                            TokenAuth = token,
+                            Content = content
+                        });
 
                 if (!response.Content.Success)
                     throw new UnexpectedException(

@@ -1,44 +1,60 @@
-﻿using Orcamentaria.Lib.Domain.Models;
-using System.Text.Json;
-using System.Text;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Orcamentaria.Lib.Domain.Contexts;
+using Orcamentaria.Lib.Domain.Enums;
+using Orcamentaria.Lib.Domain.Exceptions;
+using Orcamentaria.Lib.Domain.Models;
+using Orcamentaria.Lib.Domain.Models.Exceptions;
+using Orcamentaria.Lib.Domain.Services;
 using System.Diagnostics;
 using System.Net;
-using Orcamentaria.Lib.Domain.Services;
-using Orcamentaria.Lib.Domain.Exceptions;
-using Orcamentaria.Lib.Domain.Enums;
+using System.Text;
+using System.Text.Json;
 
 namespace Orcamentaria.Lib.Application.Services
 {
     public class HttpClientService : IHttpClientService
     {
         private readonly HttpClient _httpClient;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public HttpClientService(HttpClient httpClient)
+        public HttpClientService(
+            HttpClient httpClient,
+            IHttpContextAccessor httpContextAccessor)
         {
             _httpClient = httpClient;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<HttpResponse<T>> SendAsync<T>(
             string baseUrl,
             EndpointRequest endpoint,
-            string? tokenAuth = null,
-            object? content = null)
+            OptionsRequest? options = null)
         {
             try
             {
+                var requestContext = GetContext();
+
+                if (options is null)
+                    options = new OptionsRequest();
+
                 var requestMessage = new HttpRequestMessage
                 {
                     Method = HttpMethod.Parse(endpoint.Method.ToUpper()),
                     RequestUri = new Uri($"{baseUrl}{endpoint.Route}"),
                 };
 
-                _httpClient.DefaultRequestHeaders.Remove("Authorization");
+                if(requestContext is not null)
+                {
+                    requestMessage.Headers.Add("RequestId", requestContext.RequestId);
+                    requestMessage.Headers.Add("RequestOrderId", requestContext.RequestOrderId.ToString());
+                }
 
-                if (!String.IsNullOrEmpty(tokenAuth))
-                    _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenAuth}");
+                if (!String.IsNullOrEmpty(options.TokenAuth))
+                    requestMessage.Headers.Add("Authorization", $"Bearer {options.TokenAuth}");
 
-                if (content is not null)
-                    requestMessage.Content = new StringContent(JsonSerializer.Serialize(content, new JsonSerializerOptions
+                if (options.Content is not null)
+                    requestMessage.Content = new StringContent(JsonSerializer.Serialize(options.Content, new JsonSerializerOptions
                     {
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     }), Encoding.UTF8, "application/json");
@@ -70,12 +86,14 @@ namespace Orcamentaria.Lib.Application.Services
 
                 var messageError = String.Format(error.Values.First(), baseUrl, endpoint.Route);
 
-                throw new IntegrationException(messageError, error.Keys.First());
+                if(error.ContainsKey(HttpStatusCode.ServiceUnavailable))
+                    throw new IntegrationException(messageError, error.Keys.First());
+
+                throw new InfoException(messageError, ErrorCodeEnum.ExternalServiceFailure);
             }
             catch (Exception ex)
             {
                 throw new UnexpectedException(ex.Message, ex);
-
             }
         }
 
@@ -88,7 +106,7 @@ namespace Orcamentaria.Lib.Application.Services
                 if (exception.StatusCode is null && exception.Message.Contains("Nenhuma conexão pôde ser feita"))
                     return new Dictionary<HttpStatusCode, string> {
                         {
-                            HttpStatusCode.InternalServerError,
+                            HttpStatusCode.ServiceUnavailable,
                             $"Não foi possivel se conectar ao serviço. {defaultMessageError}"
                         } };
 
@@ -111,6 +129,11 @@ namespace Orcamentaria.Lib.Application.Services
             {
                 throw new UnexpectedException(ex.Message, ex);
             }
+        }
+
+        private IRequestContext GetContext()
+        {
+            return _httpContextAccessor.HttpContext?.RequestServices.GetService<IRequestContext>();
         }
     }
 }

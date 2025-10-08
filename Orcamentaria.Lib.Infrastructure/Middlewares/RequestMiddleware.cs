@@ -16,13 +16,15 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
         {
             try
             {
-                if(!String.IsNullOrEmpty(context.Request.Headers["RequestId"]))
+                if (!String.IsNullOrEmpty(context.Request.Headers["RequestId"]))
                 {
                     requestContext.RequestId = context.Request.Headers["RequestId"];
-                    requestContext.RequestOrderId = int.Parse(context.Request.Headers["RequestOrderId"]);
+                    requestContext.RequestOrderId = int.Parse(context.Request.Headers["RequestOrderId"]) + 1;
                 }
+                else
+                    requestContext.RequestId = Guid.NewGuid().ToString();
 
-                await _next(context);
+                    await _next(context);
             }
             catch (Exception)
             {

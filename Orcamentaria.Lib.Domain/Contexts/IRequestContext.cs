@@ -3,6 +3,6 @@
     public interface IRequestContext
     {
         public string RequestId { get; set; }
-        public int RequestOrderId { get; set; }
+        int RequestOrderId { get; set; }
     }
 }

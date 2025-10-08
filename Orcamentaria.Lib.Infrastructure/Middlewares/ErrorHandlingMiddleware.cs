@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
+using Orcamentaria.Lib.Domain.Contexts;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
@@ -39,8 +41,6 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
         public async Task HandleExceptionAsync(HttpContext context, DefaultException ex)
         {
-            
-            context.Request.Headers.TryGetValue("RequestId", out StringValues requestId);
             var request = context.Request;
 
             string body = "";
@@ -57,7 +57,6 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
             var origin = new RequestExceptionOrigin
             {
-                Id = requestId.FirstOrDefault(),
                 Type = OriginEnum.External,
                 Host = request?.Host.ToString(),
                 Route = request?.Path,
