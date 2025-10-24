@@ -2,6 +2,6 @@
 {
     public interface ITokenProvider
     {
-        public Task<string> GetTokenServiceAsync();
+        public Task<string> GetTokenAsync();
     }
 }

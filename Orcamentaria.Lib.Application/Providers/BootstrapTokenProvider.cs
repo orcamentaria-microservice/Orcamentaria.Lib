@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Configuration;
 using Orcamentaria.APIGetaway.Domain.DTOs.Authentication;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
@@ -7,34 +7,40 @@ using Orcamentaria.Lib.Domain.Services;
 
 namespace Orcamentaria.Lib.Application.Providers
 {
-    public class TokenProvider : ITokenProvider
+    public class BootstrapTokenProvider : ITokenProvider
     {
-        private readonly ServiceConfiguration _serviceConfiguration;
+        private readonly string _baseUrlApiGetaway;
         private readonly IApiGetawayService _apiGetawayService;
+        private readonly IConfiguration _configuration;
 
-        public TokenProvider(
-            IOptions<ServiceConfiguration> serviceConfiguration,
-            IApiGetawayService apiGetawayService)
+        public BootstrapTokenProvider(
+            string baseUrlApiGetaway,
+            IApiGetawayService apiGetawayService,
+            IConfiguration configuration)
         {
-            _serviceConfiguration = serviceConfiguration.Value;
+            _baseUrlApiGetaway = baseUrlApiGetaway;
             _apiGetawayService = apiGetawayService;
+            _configuration = configuration;
         }
 
-        public async Task<string> GetTokenServiceAsync()
+        public async Task<string> GetTokenAsync()
         {
             try
             {
-                var apiGetawayConfiguration = _apiGetawayService.GetApiGetawayConfiguration("AuthService", "ServiceAuthenticate");
-
-                var resource = apiGetawayConfiguration.Resources.First();
+                var resource = new ResourceConfiguration
+                {
+                    ServiceName = "AuthService",
+                    EndpointName = "AuthenticateBootstrap",
+                };
 
                 IDictionary<string, string> @params = new Dictionary<string, string>();
 
-                @params.Add("clientId", _serviceConfiguration.ClientId);
-                @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
+                var bootstrapSecret = _configuration.GetSection("BOOTSTRAPSECRET");
+
+                @params.Add("bootstrapSecret", bootstrapSecret.Value);
 
                 var response = await _apiGetawayService.Routing<AuthenticationServiceResponseDTO>(
-                    apiGetawayConfiguration.BaseUrl,
+                    _baseUrlApiGetaway,
                     resource.ServiceName,
                     resource.EndpointName,
                     String.Empty,

@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,6 +20,7 @@ using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Providers;
 using Orcamentaria.Lib.Domain.Services;
 using Orcamentaria.Lib.Infrastructure.Contexts;
+using Orcamentaria.Lib.Infrastructure.Initializers;
 using Orcamentaria.Lib.Infrastructure.Middlewares;
 using System.Text.Json.Serialization.Metadata;
 
@@ -28,6 +29,21 @@ namespace Orcamentaria.Lib.Infrastructure
     public static class CommonDI
     {
         readonly static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+        public static IConfiguration ResolveConfigs(
+            string serviceName,
+            IServiceCollection services,
+            IConfiguration configuration)
+        {
+            var newConfigs = new ConfigurationBagInitializer(serviceName)
+                .InitializeAsync(configuration)
+                .GetAwaiter()
+                .GetResult();
+
+            services.Replace(ServiceDescriptor.Singleton<IConfiguration>(newConfigs));
+
+            return newConfigs;
+        }
 
         public static void ResolveCommonServices(
             string serviceName,
@@ -92,6 +108,7 @@ namespace Orcamentaria.Lib.Infrastructure
             });
 
             services.AddScoped<IUserAuthContext, UserAuthContext>();
+            services.AddScoped<IServiceAuthContext, ServiceAuthContext>();
             services.AddScoped<IRequestContext, RequestContext>();
 
             if (configuration.GetSection("ServiceRegistryConfiguration") is null)
@@ -100,6 +117,7 @@ namespace Orcamentaria.Lib.Infrastructure
             services.Configure<ServiceConfiguration>(configuration.GetSection("ServiceConfiguration"));
             services.Configure<ServiceRegistryConfiguration>(configuration.GetSection("ServiceRegistryConfiguration"));
             services.Configure<ApiGetawayConfiguration>(configuration.GetSection("ApiGetawayConfiguration"));
+            services.Configure<MessageBrokerConfiguration>(configuration.GetSection("MessageBrokerConfiguration"));
 
             services.Configure<JsonOptions>(options =>
             {
@@ -123,30 +141,105 @@ namespace Orcamentaria.Lib.Infrastructure
             });
 
             services.AddSingleton<ILogService, LogService>();
-            services.AddSingleton<IPublishMessageBrokerService>(_ => new RabbitMqPublishService("localhost"));
-            services.AddSingleton<ITokenProvider, TokenProvider>();
+            services.AddSingleton<IPublishMessageBrokerService, RabbitMqPublishService>();
+            services.AddSingleton<ITokenProvider, ServiceTokenProvider>();
             services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
             services.AddSingleton<IRsaService, RsaService>();
             services.AddSingleton<IApiGetawayService, ApiGetawayService>();
             services.AddSingleton<IServiceRegistryService, ServiceRegistryService>();
             services.AddSingleton<IHttpClientService, HttpClientService>();
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var sp = services.BuildServiceProvider();
-                var rsaService = sp.GetRequiredService<IRsaService>();
-
-                options.TokenValidationParameters = new TokenValidationParameters
+            services.AddAuthentication(options =>
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = "orcamentaria.auth",
+                    options.DefaultScheme = "smartJwt";
+                    options.DefaultAuthenticateScheme = "smartJwt";
+                    options.DefaultChallengeScheme = "smartJwt";
+                })
+                .AddPolicyScheme("smartJwt", "Choose schema", o =>
+                {
+                    o.ForwardDefaultSelector = ctx =>
+                    {
+                        var auth = ctx.Request.Headers["Authorization"].FirstOrDefault();
+                        if (auth?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            var token = auth.Substring("Bearer ".Length).Trim();
+                            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                            if (handler.CanReadToken(token))
+                            {
+                                var jwt = handler.ReadJwtToken(token);
+
+                                if (jwt.Audiences.Contains("orcamentaria.service") ||
+                                    jwt.Claims.Any(c => c.Type == "token_use" && c.Value == "service"))
+                                    return "serviceJwt";
+
+                                if (jwt.Audiences.Contains("orcamentaria.bootstrap") ||
+                                    jwt.Claims.Any(c => c.Type == "token_use" && c.Value == "bootstrap"))
+                                    return "bootstrapJwt";
+                            }
+                        }
+                        return "userJwt";
+                    };
+                })
+                .AddJwtBearer("userJwt", options =>
+                {
+                    var sp = services.BuildServiceProvider();
+                    var rsaService = sp.GetRequiredService<IRsaService>();
+                    var privateKey = "public_key_user.pem";
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = "orcamentaria.auth",
                     ValidAudience = "orcamentaria.user",
-                    IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), "public_key_user.pem")
-                };
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                    };
+                })
+                .AddJwtBearer("serviceJwt", options =>
+                {
+                    var sp = services.BuildServiceProvider();
+                    var rsaService = sp.GetRequiredService<IRsaService>();
+                    var privateKey = "public_key_service.pem";
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = "orcamentaria.auth",
+                        ValidAudience = "orcamentaria.service",
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                    };
+                })
+                .AddJwtBearer("bootstrapJwt", options =>
+                {
+                    var sp = services.BuildServiceProvider();
+                    var rsaService = sp.GetRequiredService<IRsaService>();
+                    var privateKey = "public_key_service.pem";
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = "orcamentaria.auth",
+                        ValidAudience = "orcamentaria.bootstrap",
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                    };
+                });
+
+            services.AddAuthorization(opt =>
+            {
+                opt.AddPolicy("UserPolicy", policy =>
+                    policy.AddAuthenticationSchemes("userJwt")
+                          .RequireClaim("token_use", "user"));
+                opt.AddPolicy("ServicePolicy", policy =>
+                    policy.AddAuthenticationSchemes("serviceJwt")
+                          .RequireClaim("token_use", "service"));
             });
 
             try
@@ -210,10 +303,10 @@ namespace Orcamentaria.Lib.Infrastructure
 
 
             app.UseAuthentication();
-            app.UseMiddleware<ErrorHandlingMiddleware>();
-            app.UseMiddleware<UserAuthMiddleware>();
-            app.UseMiddleware<RequestMiddleware>();
             app.UseAuthorization();
+            app.UseMiddleware<ErrorHandlingMiddleware>();
+            app.UseMiddleware<AuthMiddleware>();
+            app.UseMiddleware<RequestMiddleware>();
 
             app.UseEndpoints(endpoints =>
             {

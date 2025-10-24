@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Orcamentaria.Lib.Domain.Contexts;
+using Orcamentaria.Lib.Domain.Exceptions;
 
 namespace Orcamentaria.Lib.Infrastructure.Middlewares
 {
@@ -26,10 +27,9 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
                     await _next(context);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                throw new UnexpectedException(ex.Message, ex);
             }
         }
     }

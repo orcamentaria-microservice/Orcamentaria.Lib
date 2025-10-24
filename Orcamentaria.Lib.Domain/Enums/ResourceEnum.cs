@@ -2,6 +2,7 @@
 {
     public enum ResourceEnum
     {
+        MASTER = 0,
         COMPANY = 1,
         PERSON = 2,
         MATERIAL = 3,
@@ -11,5 +12,6 @@
         USER = 7,
         SERVICE = 8,
         PERMISSION = 9,
+        CONFIGURATION_BAG = 10
     }
 }

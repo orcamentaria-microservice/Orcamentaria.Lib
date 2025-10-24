@@ -1,4 +1,6 @@
-﻿using Orcamentaria.Lib.Domain.Services;
+﻿using Microsoft.Extensions.Options;
+using Orcamentaria.Lib.Domain.Models.Configurations;
+using Orcamentaria.Lib.Domain.Services;
 using RabbitMQ.Client;
 using System.Text;
 
@@ -9,9 +11,14 @@ namespace Orcamentaria.Lib.Application.Services
         private readonly IConnection _connection;
         private readonly IChannel _channel;
 
-        public RabbitMqPublishService(string host)
+        public RabbitMqPublishService(IOptions<MessageBrokerConfiguration> messageBrokerConfiguration)
         {
-            var factory = new ConnectionFactory { HostName = host };
+            var factory = new ConnectionFactory {
+                HostName = messageBrokerConfiguration.Value.Host,
+                Port = messageBrokerConfiguration.Value.Port,
+                UserName = messageBrokerConfiguration.Value.UserName,
+                Password = messageBrokerConfiguration.Value.Password
+            };
             _connection = factory.CreateConnectionAsync().Result;
             _channel = _connection.CreateChannelAsync().Result;
         }

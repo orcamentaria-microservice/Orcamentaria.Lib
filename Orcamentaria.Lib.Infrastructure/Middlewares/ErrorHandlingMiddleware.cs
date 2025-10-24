@@ -1,14 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Primitives;
-using Orcamentaria.Lib.Domain.Contexts;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Services;
-using System.Net;
 using System.Text;
 using System.Text.Json;
 

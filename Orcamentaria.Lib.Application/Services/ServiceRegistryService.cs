@@ -42,7 +42,7 @@ namespace Orcamentaria.Lib.Application.Services
                     {
                         using var scope = _scopeFactory.CreateScope();
                         var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
-                        tokenService = await tokenProvider.GetTokenServiceAsync();
+                        tokenService = await tokenProvider.GetTokenAsync();
 
                         if (String.IsNullOrWhiteSpace(tokenService))
                             throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
