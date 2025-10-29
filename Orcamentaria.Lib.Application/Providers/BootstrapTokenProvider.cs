@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Orcamentaria.APIGetaway.Domain.DTOs.Authentication;
+using Orcamentaria.Lib.Domain.DTOs.Authentication;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Providers;

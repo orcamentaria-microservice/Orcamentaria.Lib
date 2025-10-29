@@ -6,5 +6,6 @@ namespace Orcamentaria.Lib.Infrastructure.Contexts
     {
         public long ServiceId { get; set; }
         public string ServiceName { get; set; }
+        public string ServiceToken { get; set; }
     }
 }

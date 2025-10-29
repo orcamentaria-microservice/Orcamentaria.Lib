@@ -1,6 +1,4 @@
-﻿using Orcamentaria.APIGetaway.Domain.Models;
-
-namespace Orcamentaria.Lib.Domain.Models
+﻿namespace Orcamentaria.Lib.Domain.Models
 {
     public class ServiceRegistry
     {

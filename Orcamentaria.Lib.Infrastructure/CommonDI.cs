@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -45,13 +46,25 @@ namespace Orcamentaria.Lib.Infrastructure
             return newConfigs;
         }
 
-        public static void ResolveCommonServices(
+        public static IConfiguration ResolveCommonServices(
             string serviceName,
             string apiVersion,
             IServiceCollection services,
             IConfiguration configuration,
             Action customServices)
         {
+            var memorySource = new MemoryConfigurationSource();
+            var configRoot = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .Add(memorySource)
+                .Build();
+
+            services.AddSingleton<IConfiguration>(configRoot);
+
+            configuration = configRoot;
+
+            services.AddSingleton(configRoot.Providers.OfType<MemoryConfigurationProvider>().Single());
+
             services.AddHttpContextAccessor();
             services.AddMemoryCache();
             services.AddHttpClient();
@@ -110,6 +123,8 @@ namespace Orcamentaria.Lib.Infrastructure
             services.AddScoped<IUserAuthContext, UserAuthContext>();
             services.AddScoped<IServiceAuthContext, ServiceAuthContext>();
             services.AddScoped<IRequestContext, RequestContext>();
+            services.AddScoped<IMessageBrokerConsumerService, RabbitMqConsumeService>();
+            services.AddScoped<string>(_ => serviceName);
 
             if (configuration.GetSection("ServiceRegistryConfiguration") is null)
                 throw new Exception("Serviço Registry não configurado.");
@@ -118,6 +133,9 @@ namespace Orcamentaria.Lib.Infrastructure
             services.Configure<ServiceRegistryConfiguration>(configuration.GetSection("ServiceRegistryConfiguration"));
             services.Configure<ApiGetawayConfiguration>(configuration.GetSection("ApiGetawayConfiguration"));
             services.Configure<MessageBrokerConfiguration>(configuration.GetSection("MessageBrokerConfiguration"));
+            services.Configure<Dictionary<string, string>>(configuration.GetSection("RealTimeConfigurations"));
+
+            services.AddKeyedScoped<IMessageBrokerProcessorService, RealTimeConfigurationMessageBrokerProcessorService>(serviceName);
 
             services.Configure<JsonOptions>(options =>
             {
@@ -148,6 +166,7 @@ namespace Orcamentaria.Lib.Infrastructure
             services.AddSingleton<IApiGetawayService, ApiGetawayService>();
             services.AddSingleton<IServiceRegistryService, ServiceRegistryService>();
             services.AddSingleton<IHttpClientService, HttpClientService>();
+            services.AddSingleton<ITopologyBrokerService, RabbitMqTopologyBrokerService>();
 
             services.AddAuthentication(options =>
                 {
@@ -258,6 +277,10 @@ namespace Orcamentaria.Lib.Infrastructure
 
                 logService.ResolveLogAsync(ex, origin);
             }
+
+            services.AddHostedService<RealTimeConfigurationHostedService>();
+
+            return configuration;
         }
 
         public static void ConfigureCommon(

@@ -1,6 +1,6 @@
 ﻿using Orcamentaria.Lib.Domain.Enums;
 
-namespace Orcamentaria.APIGetaway.Domain.Models
+namespace Orcamentaria.Lib.Domain.Models
 {
     public class StateService
     {

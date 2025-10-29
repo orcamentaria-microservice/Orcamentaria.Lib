@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Hosting.Server;
+﻿ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
@@ -20,37 +21,29 @@ namespace Orcamentaria.Lib.Application.HostedServices
         private readonly IServiceRegistryService _serviceRegistryService;
         private readonly IMemoryCacheService _memoryCacheService;
         private readonly ILogService _logService;
-        private readonly ServiceRegistryConfiguration _serviceRegistryConfiguration;
+        private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
         private readonly ServiceConfiguration _serviceConfiguration;
         private readonly IServer _server;
         private readonly IHostApplicationLifetime _lifetime;
         private readonly HttpClient _httpClient;
-
-        private ServiceRegistryConfigurationEndpoint _registerEndpoint;
-        private ServiceRegistryConfigurationEndpoint _heartbeatEndpoint;
 
         public ServiceRegistryHostedService(
             IMemoryCacheService memoryCacheService,
             ILogService logService,
             IServiceRegistryService serviceRegistryService,
             IOptions<ServiceConfiguration> serviceConfiguration,
-            IOptions<ServiceRegistryConfiguration> serviceRegistryConfiguration,
+            IOptions<ApiGetawayConfiguration> apiGetawayConfiguration,
             IServer server,
             IHostApplicationLifetime lifetime, 
             HttpClient httpClient)
         {
             _server = server;
             _lifetime = lifetime;
-            _serviceRegistryConfiguration = serviceRegistryConfiguration.Value;
+            _apiGetawayConfiguration = apiGetawayConfiguration.Value;
             _httpClient = httpClient;
             _serviceRegistryService = serviceRegistryService;
             _serviceConfiguration = serviceConfiguration.Value;
             _memoryCacheService = memoryCacheService;
-
-            var endpoints = _serviceRegistryConfiguration.Endpoints;
-
-            _registerEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "register");
-            _heartbeatEndpoint = endpoints.FirstOrDefault(x => x.Name.ToLower() == "heartbeat");
             _logService = logService;
         }
 
@@ -61,29 +54,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
-
-        private async void OnStarted()
-        {
-            try
-            {
-                await SendRegisterService();
-
-                SendHeartbeat();
-            }
-            catch (DefaultException ex)
-            {
-                var origin = new ServiceExceptionOrigin
-                {
-                    Type = OriginEnum.Internal,
-                    ProcessName = "HostedService"
-                };
-
-                await _logService.ResolveLogAsync(ex, origin);
-            }
-        }
+            => throw new TaskCanceledException("Ocorreu um erro na registro do serviço.");
 
         public async Task SendRegisterService()
         {
@@ -92,7 +63,13 @@ namespace Orcamentaria.Lib.Application.HostedServices
                 var address = _server.Features.Get<IServerAddressesFeature>()?.Addresses?.FirstOrDefault();
 
                 if (String.IsNullOrEmpty(address))
-                    throw new IntegrationException("Não foi possível obter a URL do swagger.", HttpStatusCode.NotFound);
+                    throw new IntegrationException("Não foi possível obter a URL do swagger. Não é possivel iniciar serviço.", HttpStatusCode.NotFound);
+
+                if (_apiGetawayConfiguration is null)
+                    throw new ConfigurationException("Service Registry não configurado. Não é possivel iniciar serviço.", ErrorCodeEnum.NotFound);
+
+                if (string.IsNullOrEmpty(_apiGetawayConfiguration.BaseUrl))
+                    throw new ConfigurationException("BaseUrl do Service Registry não configurada. Não é possivel iniciar serviço.", ErrorCodeEnum.NotFound);
 
                 var swaggerUrl = $"{address}swagger/v1/swagger.json";
 
@@ -111,10 +88,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
 
                 do
                 {
-                    var result = await _serviceRegistryService.SendServiceRegister<string>(
-                        baseUrl: _serviceRegistryConfiguration.BaseUrl,
-                        endpoint: _registerEndpoint,
-                        content: payload);
+                    var result = await _serviceRegistryService.Register(payload);
 
                     if (result.Success)
                     {
@@ -132,7 +106,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
                 } while (attemptNumber <= 6);
 
                 if (requestFailed)
-                    throw new IntegrationException($"O serviço {_serviceConfiguration.ServiceName} não conseguiu se registrar no Service Registry.", errorCode);
+                    throw new IntegrationException($"O serviço {_serviceConfiguration.ServiceName} não conseguiu se registrar no Service Registry. Não é possivel iniciar serviço.", errorCode);
             }
             catch (DefaultException)
             {
@@ -149,15 +123,19 @@ namespace Orcamentaria.Lib.Application.HostedServices
             try
             {
                 if (!_memoryCacheService.GetMemoryCache($"{_serviceConfiguration.ServiceName}_key", out string serviceId))
-                    throw new BusinessException("Falha para obter o ID do serviço. Não é possivel mandar o heartbeat ao Service Registry", ErrorCodeEnum.NotFound);
-
-                _heartbeatEndpoint.Route = _heartbeatEndpoint.Route.Replace("{serviceId}", serviceId);
+                    throw new BusinessException("Falha para obter o ID do serviço. Não é foi enviar o heartbeat ao Service Registry", ErrorCodeEnum.NotFound);
 
                 while (true)
                 {
-                    await _serviceRegistryService.SendServiceRegister<Task>(
-                            baseUrl: _serviceRegistryConfiguration.BaseUrl,
-                            endpoint: _heartbeatEndpoint);
+                    var response = await _serviceRegistryService.Heartbeat(serviceId);
+
+                    if (!response.Success)
+                    {
+                        if(response.Error.ErrorCode == ErrorCodeEnum.AccessDenied || response.Error.ErrorCode == ErrorCodeEnum.Forbidden)
+                            response = await _serviceRegistryService.Heartbeat(serviceId, true);
+                        else
+                            throw new IntegrationException("Falha ao enviar heartbeat para o Service Registry.", (HttpStatusCode)response.Error.ErrorCode);
+                    }
 
                     await Task.Delay(TimeSpan.FromSeconds(30));
                 }
@@ -169,6 +147,29 @@ namespace Orcamentaria.Lib.Application.HostedServices
             catch (Exception ex)
             {
                 throw new UnexpectedException(ex.Message, ex);
+            }
+        }
+
+        #region Private Methods
+        private async void OnStarted()
+        {
+            try
+            {
+                await SendRegisterService();
+
+                SendHeartbeat();
+            }
+            catch (DefaultException ex)
+            {
+                var origin = new ServiceExceptionOrigin
+                {
+                    Type = OriginEnum.Internal,
+                    ProcessName = "HostedService"
+                };
+
+                await _logService.ResolveLogAsync(ex, origin);
+
+                StopAsync(CancellationToken.None).Wait();
             }
         }
 
@@ -222,5 +223,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
                 throw new UnexpectedException(ex.Message, ex);
             }
         }
+
+        #endregion
     }
 }

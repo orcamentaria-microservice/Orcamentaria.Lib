@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Options;
-using Orcamentaria.APIGetaway.Domain.DTOs.Authentication;
+using Orcamentaria.Lib.Domain.DTOs.Authentication;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Providers;
@@ -11,22 +11,28 @@ namespace Orcamentaria.Lib.Application.Providers
     {
         private readonly ServiceConfiguration _serviceConfiguration;
         private readonly IApiGetawayService _apiGetawayService;
+        private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
 
         public ServiceTokenProvider(
             IOptions<ServiceConfiguration> serviceConfiguration,
-            IApiGetawayService apiGetawayService)
+            IApiGetawayService apiGetawayService,
+            IOptions<ApiGetawayConfiguration> apiGetawayConfiguration)
         {
             _serviceConfiguration = serviceConfiguration.Value;
             _apiGetawayService = apiGetawayService;
+            _apiGetawayConfiguration = apiGetawayConfiguration.Value;
         }
 
         public async Task<string> GetTokenAsync()
         {
             try
             {
-                var apiGetawayConfiguration = _apiGetawayService.GetApiGetawayConfiguration("AuthService", "AuthenticateService");
-
-                var resource = apiGetawayConfiguration.Resources.First();
+                var resource = new ResourceConfiguration
+                {
+                    ServiceName = "AuthService",
+                    EndpointName = "AuthenticateService",
+                    Params = new List<string> { "clientId", "clientSecret" }
+                };
 
                 IDictionary<string, string> @params = new Dictionary<string, string>();
 
@@ -34,7 +40,7 @@ namespace Orcamentaria.Lib.Application.Providers
                 @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
 
                 var response = await _apiGetawayService.Routing<AuthenticationServiceResponseDTO>(
-                    apiGetawayConfiguration.BaseUrl,
+                    _apiGetawayConfiguration.BaseUrl,
                     resource.ServiceName,
                     resource.EndpointName,
                     String.Empty,

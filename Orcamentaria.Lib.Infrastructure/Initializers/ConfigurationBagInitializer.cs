@@ -6,6 +6,7 @@ using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.DTOs.ConfigurationBag;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
+using System.Xml.Linq;
 
 namespace Orcamentaria.Lib.Infrastructure.Initializers
 {
@@ -26,21 +27,19 @@ namespace Orcamentaria.Lib.Infrastructure.Initializers
                 var httpContextAccessor = new HttpContextAccessor();
                 var httpClientService = new HttpClientService(httpClient, httpContextAccessor);
 
-                var baseUrlApiGetaway = configuration.GetSection("BaseUrlApiGetaway").Get<string>();
+                var apiGetawayConfiguration = configuration.GetSection("ApiGetawayConfiguration").Get<ApiGetawayConfiguration>();
 
-                if (string.IsNullOrEmpty(baseUrlApiGetaway))
-                    throw new ArgumentNullException("BaseUrlApiGetaway não configurado.");
+                if (apiGetawayConfiguration is null)
+                    throw new ConfigurationException("API Getaway não configurado.");
 
-                var config = new ApiGetawayConfiguration
-                {
-                    BaseUrl = baseUrlApiGetaway,
-                };
+                if (apiGetawayConfiguration.BaseUrl is null)
+                    throw new ConfigurationException("BaseURL do API Getaway não configurado.");
 
-                var options = Options.Create(config);
+                var options = Options.Create(apiGetawayConfiguration);
 
                 var client = new ApiGetawayService(httpClientService, options);
 
-                var bootstrapTokenProvider = new BootstrapTokenProvider(baseUrlApiGetaway, client, configuration);
+                var bootstrapTokenProvider = new BootstrapTokenProvider(apiGetawayConfiguration.BaseUrl, client, configuration);
 
                 var token = await bootstrapTokenProvider.GetTokenAsync();
 
@@ -55,7 +54,7 @@ namespace Orcamentaria.Lib.Infrastructure.Initializers
                 @params.Add("serviceName", _serviceName);
 
                 var response = await client.Routing<ConfigurationBagResponseDTO>(
-                        baseUrlApiGetaway,
+                        apiGetawayConfiguration.BaseUrl,
                         resource.ServiceName,
                         resource.EndpointName,
                         token,
@@ -65,7 +64,9 @@ namespace Orcamentaria.Lib.Infrastructure.Initializers
                 if (!response.Success)
                     throw new ConfigurationException($"Erro ao buscar configurações do serviço {_serviceName}");
 
-                var dict = ToAppsettingsDictionary(response.Data);
+                var dict = ToEnvsDictionary(response.Data);
+
+                dict["ServiceConfiguration:ServiceName"] = _serviceName.Split(".").Last();
 
                 var newConfig = new ConfigurationBuilder()
                     .AddConfiguration(configuration)
@@ -85,7 +86,7 @@ namespace Orcamentaria.Lib.Infrastructure.Initializers
         }
 
         #region private methods
-        private static Dictionary<string, string> ToAppsettingsDictionary(ConfigurationBagResponseDTO bag)
+        private static Dictionary<string, string> ToEnvsDictionary(ConfigurationBagResponseDTO bag)
         {
             var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -123,6 +124,23 @@ namespace Orcamentaria.Lib.Infrastructure.Initializers
                     foreach (var (sectionName, sectionValue) in item)
                     {
                         FlattenObject(dict, sectionValue, sectionName);
+                    }
+                }
+            }
+
+            if (bag.RealTimeConfigurations is not null)
+            {
+                foreach (var row in bag.RealTimeConfigurations)
+                {
+                    if (row is null) continue;
+
+                    var key = row.Keys.First();
+                    var value = row.Values.First();
+
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+                    {
+                        dict[$"RealTimeConfigurations:{key}"] = value;
+                        continue;
                     }
                 }
             }

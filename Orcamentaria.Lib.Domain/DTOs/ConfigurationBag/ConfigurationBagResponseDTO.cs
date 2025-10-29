@@ -6,5 +6,6 @@
         public DateTime UpdateAt { get; set; }
         public IEnumerable<Dictionary<string, string>> ConnectionStrings { get; set; } = [];
         public IEnumerable<Dictionary<string, object>> Configurations { get; set; }
+        public IEnumerable<Dictionary<string, string>> RealTimeConfigurations { get; set; }
     }
 }

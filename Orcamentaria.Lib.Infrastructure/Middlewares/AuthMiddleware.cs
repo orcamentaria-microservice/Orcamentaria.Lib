@@ -29,7 +29,7 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 }
                 
                 var header = context.Request.Headers.Authorization.FirstOrDefault();
-                userAuthContext.UserToken = TryGetBearer(header);
+                var jwtToken = TryGetBearer(header);
 
                 var tokenUse = principal.FindFirst("token_use")?.Value;
                 var audiences = principal.Claims
@@ -39,6 +39,7 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
                 if(string.Equals(tokenUse, "bootstrap", StringComparison.OrdinalIgnoreCase))
                 {
+                    serviceAuthContext.ServiceToken = jwtToken;
                     await _next(context);
                     return;
                 }
@@ -54,7 +55,8 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     userAuthContext.UserId = userId;
                     userAuthContext.UserEmail = email;
                     userAuthContext.UserCompanyId = companyId;
-                        
+                    userAuthContext.UserToken = jwtToken;
+
                     await _next(context);
                     return;
                 }
@@ -62,10 +64,11 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 if (string.Equals(tokenUse, "service", StringComparison.OrdinalIgnoreCase))
                 {
                     long.TryParse(claims.Where(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier").First().Value, out var serviceId);
-                    var serviceName = claims.Where(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name").First().Value;
+                    var serviceName = claims.Where(c => c.Type == "name").First().Value;
 
                     serviceAuthContext.ServiceId = serviceId;
-                    userAuthContext.UserEmail = serviceName;
+                    serviceAuthContext.ServiceName = serviceName;
+                    serviceAuthContext.ServiceToken = jwtToken;
 
                     await _next(context);
                     return;

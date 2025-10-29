@@ -1,4 +1,4 @@
-﻿namespace Orcamentaria.APIGetaway.Domain.DTOs.Authentication
+﻿namespace Orcamentaria.Lib.Domain.DTOs.Authentication
 {
     public class AuthenticationUserResponseDTO
     {

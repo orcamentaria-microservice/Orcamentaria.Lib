@@ -10,9 +10,13 @@ namespace Orcamentaria.Lib.Application.Services
     {
         private readonly IConnection _connection;
         private readonly IChannel _channel;
+        private readonly ITopologyBrokerService _topologyBrokerService;
 
-        public RabbitMqPublishService(IOptions<MessageBrokerConfiguration> messageBrokerConfiguration)
+        public RabbitMqPublishService(
+            ITopologyBrokerService topologyBrokerService,
+            IOptions<MessageBrokerConfiguration> messageBrokerConfiguration)
         {
+            _topologyBrokerService = topologyBrokerService;
             var factory = new ConnectionFactory {
                 HostName = messageBrokerConfiguration.Value.Host,
                 Port = messageBrokerConfiguration.Value.Port,
@@ -27,21 +31,7 @@ namespace Orcamentaria.Lib.Application.Services
         {
             var bytes = Encoding.UTF8.GetBytes(message);
 
-            await _channel.ExchangeDeclareAsync(exchange, ExchangeType.Topic);
-
-            foreach (var bind in binds)
-            {
-                await _channel.QueueDeclareAsync(
-                queue: $"{exchange}.{bind}".Replace(".*", ""),
-                durable: true,
-                exclusive: false,
-                autoDelete: false);
-
-                await _channel.QueueBindAsync(
-                queue: $"{exchange}.{bind}".Replace(".*", ""),
-                exchange: exchange,
-                routingKey: $"{exchange}.{bind}");
-            }
+            await _topologyBrokerService.CreateTopicExchangeAsync(exchange, binds);
 
             await _channel.BasicPublishAsync(exchange: exchange, routingKey: routingKey, body: bytes);
         }

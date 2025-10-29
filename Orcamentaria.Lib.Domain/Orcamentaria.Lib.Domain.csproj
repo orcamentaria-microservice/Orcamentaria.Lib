@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>Orcamentaria.Lib.Domain</PackageId>
-	<Version>9.5.9</Version>
+	<Version>9.7.3</Version>
 	<Authors>Marcelo Fernando</Authors>
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
