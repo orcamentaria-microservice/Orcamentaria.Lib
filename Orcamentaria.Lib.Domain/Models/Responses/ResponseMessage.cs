@@ -1,4 +1,4 @@
-﻿namespace Orcamentaria.Lib.Domain.Models
+﻿namespace Orcamentaria.Lib.Domain.Models.Responses
 {
     public class ResponseMessage
     {

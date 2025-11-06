@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
-using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Logs;
+using Orcamentaria.Lib.Domain.Models.Responses;
 using Orcamentaria.Lib.Domain.Services;
 using System.Text;
 using System.Text.Json;
@@ -50,14 +50,23 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     body = "{}";
             }
 
+            var routeValues = new Dictionary<string, string>();
+            if(request.RouteValues.Any())
+                routeValues = request?.RouteValues.Where((x, i) => i >= 2).ToDictionary(k => k.Key, v => v.Value.ToString());
+
+            var query = new Dictionary<string, string>();
+            if (request.Query.Any())
+                query = request?.Query.ToDictionary(k => k.Key, v => v.Value.ToString());
+
             var origin = new RequestExceptionOrigin
             {
                 Type = OriginEnum.External,
                 Host = request?.Host.ToString(),
                 Route = request?.Path,
                 Method = request?.Method,
-                Body = JsonSerializer.Serialize(body),
-                Query = JsonSerializer.Serialize(request?.Query)
+                Body = body,
+                Query = request?.QueryString.Value,
+                RouteValues = routeValues
             };
 
             await _logExceptionService.ResolveLogAsync(ex, origin);

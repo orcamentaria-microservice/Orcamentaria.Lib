@@ -24,13 +24,13 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 }
                 else
                     requestContext.RequestId = Guid.NewGuid().ToString();
-
-                    await _next(context);
             }
             catch (Exception ex)
             {
-                throw new UnexpectedException(ex.Message, ex);
+                throw new UnexpectedException("Erro ao capturar RequestId e RequestOrderId", ex);
             }
+
+            await _next(context);
         }
     }
 }

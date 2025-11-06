@@ -131,7 +131,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
 
                     if (!response.Success)
                     {
-                        if(response.Error.ErrorCode == ErrorCodeEnum.AccessDenied || response.Error.ErrorCode == ErrorCodeEnum.Forbidden)
+                        if(response.Error.ErrorCode == ErrorCodeEnum.Unauthorized)
                             response = await _serviceRegistryService.Heartbeat(serviceId, true);
                         else
                             throw new IntegrationException("Falha ao enviar heartbeat para o Service Registry.", (HttpStatusCode)response.Error.ErrorCode);

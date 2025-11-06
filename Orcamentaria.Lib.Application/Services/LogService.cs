@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Domain.Contexts;
+using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Logs;
@@ -53,12 +54,18 @@ namespace Orcamentaria.Lib.Application.Services
             };
 
             var routingKey = $"error.{ex.Severity.ToString().ToLower()}";
+
+            var binds = new List<string>();
+            foreach (var severity in Enum.GetValues(typeof(SeverityLevelEnum)))
+            {
+                binds.Add(severity.ToString().ToLower());
+            }
 ;
             await _publishMessageBrokerService.SendMessageToTopicExchange(
                 message: JsonSerializer.Serialize(exceptionLog), 
                 exchange: "error", 
                 routingKey: routingKey,
-                binds: ["*", "critical"]);
+                binds: binds.ToArray());
         }
 
         private string GetFunctionName(StackFrame frame)

@@ -1,13 +1,14 @@
 ﻿using FluentValidation.Results;
 using Orcamentaria.Lib.Domain.Enums;
 
-namespace Orcamentaria.Lib.Domain.Models
+namespace Orcamentaria.Lib.Domain.Models.Responses
 {
     public class Response<T>
     {
         public T? Data { get; set; }
         public bool Success { get; set; } = true;
-        public string? SimpleMessage { get; set; }
+        public string? Message { get; set; }
+        public ResponsePagination? Pagination { get; set; }
         public ResponseError? Error { get; set; }
 
         public Response()
@@ -27,11 +28,46 @@ namespace Orcamentaria.Lib.Domain.Models
             Data = data;
         }
 
+        public Response(T data, ResponsePagination pagination)
+        {
+            if (data is null)
+            {
+                Success = false;
+                Error = new ResponseError(ErrorCodeEnum.NotFound);
+                return;
+            }
+
+            Data = data;
+            Pagination = pagination;
+        }
+
         public Response(T data, string simpleMessage)
         {
+            if (data is null)
+            {
+                Success = false;
+                Error = new ResponseError(ErrorCodeEnum.NotFound);
+                return;
+            }
+
             Data = data;
-            SimpleMessage = simpleMessage;
+            Message = simpleMessage;
         }
+
+        public Response(T data, ResponsePagination pagination, string simpleMessage)
+        {
+            if (data is null)
+            {
+                Success = false;
+                Error = new ResponseError(ErrorCodeEnum.NotFound);
+                return;
+            }
+
+            Data = data;
+            Pagination = pagination;
+            Message = simpleMessage;
+        }
+
 
         public Response(ErrorCodeEnum errorType)
         {

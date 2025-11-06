@@ -7,5 +7,6 @@
         public string Method { get; set; }
         public string Body { get; set; }
         public string Query { get; set; }
+        public Dictionary<string, string> RouteValues { get; set; }
     }
 }

@@ -5,8 +5,8 @@ namespace Orcamentaria.Lib.Domain.Exceptions
 {
     public class UnexpectedException : DefaultException
     {
-        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Error;
-        const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.InternalError;
+        const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Warning;
+        const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.UnexpectedError;
 
         public UnexpectedException(
             string message,

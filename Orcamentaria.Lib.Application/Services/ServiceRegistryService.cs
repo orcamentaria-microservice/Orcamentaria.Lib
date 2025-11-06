@@ -5,6 +5,7 @@ using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Configurations;
+using Orcamentaria.Lib.Domain.Models.Responses;
 using Orcamentaria.Lib.Domain.Providers;
 using Orcamentaria.Lib.Domain.Services;
 
@@ -124,7 +125,7 @@ namespace Orcamentaria.Lib.Application.Services
                     tokenAuth = await GetTokenAsync(forceTokenGeneration);
                 }
 
-                var response = await _httpClientService.SendAsync<Response<T>>(
+                var response = await _httpClientService.SendAsync<T>(
                     baseUrl: baseUrl,
                     endpoint: endpoint,
                     options: new OptionsRequest
@@ -135,7 +136,7 @@ namespace Orcamentaria.Lib.Application.Services
 
                 if (!forceTokenGeneration &&
                     !response.Content.Success &&
-                    response.Content.Error.ErrorCode == ErrorCodeEnum.AccessDenied)
+                    response.Content.Error.ErrorCode == ErrorCodeEnum.Unauthorized)
                     return await SendServiceRegister<T>(baseUrl, endpoint, content, true);
 
                 return response.Content;

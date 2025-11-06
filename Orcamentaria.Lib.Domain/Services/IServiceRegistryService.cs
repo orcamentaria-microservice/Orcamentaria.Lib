@@ -1,6 +1,6 @@
 ﻿using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
-using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Configurations;
+using Orcamentaria.Lib.Domain.Models.Responses;
 
 namespace Orcamentaria.Lib.Domain.Services
 {

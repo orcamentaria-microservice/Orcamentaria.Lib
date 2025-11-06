@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Orcamentaria.Lib.Domain.Contexts;
-using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
-using Orcamentaria.Lib.Domain.Models.Exceptions;
+using Orcamentaria.Lib.Domain.Models.Responses;
 using Orcamentaria.Lib.Domain.Services;
+using System;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
@@ -26,114 +26,120 @@ namespace Orcamentaria.Lib.Application.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<HttpResponse<T>> SendAsync<T>(
+        public async Task<HttpResponse<Response<T>>> SendAsync<T>(
             string baseUrl,
             EndpointRequest endpoint,
             OptionsRequest? options = null)
         {
+            var requestContext = GetContext();
+
+            if (options is null)
+                options = new OptionsRequest();
+
+            var requestMessage = new HttpRequestMessage
+            {
+                Method = HttpMethod.Parse(endpoint.Method.ToUpper()),
+                RequestUri = new Uri($"{baseUrl}{endpoint.Route}"),
+            };
+
+            if (requestContext is not null)
+            {
+                requestMessage.Headers.Add("RequestId", requestContext.RequestId);
+                requestMessage.Headers.Add("RequestOrderId", requestContext.RequestOrderId.ToString());
+            }
+
+            if (!String.IsNullOrEmpty(options.TokenAuth))
+                requestMessage.Headers.Add("Authorization", $"Bearer {options.TokenAuth}");
+
+            if (options.Content is not null)
+                requestMessage.Content = new StringContent(JsonSerializer.Serialize(options.Content, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                }), Encoding.UTF8, "application/json");
+
+            var stopWatch = Stopwatch.StartNew();
+            var response = await _httpClient.SendAsync(requestMessage);
+            var responseTime = stopWatch.Elapsed;
+
             try
             {
-                var requestContext = GetContext();
-
-                if (options is null)
-                    options = new OptionsRequest();
-
-                var requestMessage = new HttpRequestMessage
-                {
-                    Method = HttpMethod.Parse(endpoint.Method.ToUpper()),
-                    RequestUri = new Uri($"{baseUrl}{endpoint.Route}"),
-                };
-
-                if(requestContext is not null)
-                {
-                    requestMessage.Headers.Add("RequestId", requestContext.RequestId);
-                    requestMessage.Headers.Add("RequestOrderId", requestContext.RequestOrderId.ToString());
-                }
-
-                if (!String.IsNullOrEmpty(options.TokenAuth))
-                    requestMessage.Headers.Add("Authorization", $"Bearer {options.TokenAuth}");
-
-                if (options.Content is not null)
-                    requestMessage.Content = new StringContent(JsonSerializer.Serialize(options.Content, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    }), Encoding.UTF8, "application/json");
-
-                var stopWatch = Stopwatch.StartNew();
-                var response = await _httpClient.SendAsync(requestMessage);
-                var responseTime = stopWatch.Elapsed;
-
                 response.EnsureSuccessStatusCode();
 
-                return new HttpResponse<T>
+                return new HttpResponse<Response<T>>
                 {
                     HttpResponseMessage = response,
                     Endpoint = endpoint,
                     ResponseTime = responseTime,
-                    Content = JsonSerializer.Deserialize<T>(await response.Content.ReadAsStringAsync(), new JsonSerializerOptions
+                    Content = JsonSerializer.Deserialize<Response<T>>(await response.Content.ReadAsStringAsync(), new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    })
+                };
+            }
+            catch (HttpRequestException ex)
+            {
+                ResolveErrorMessage(ex);
+
+                return new HttpResponse<Response<T>>
+                {
+                    HttpResponseMessage = response,
+                    Endpoint = endpoint,
+                    ResponseTime = responseTime,
+                    Content = JsonSerializer.Deserialize<Response<T>>(await response.Content.ReadAsStringAsync(), new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
                     }),
                 };
             }
-            catch (DefaultException)
-            {
-                throw;
-            }
-            catch (HttpRequestException ex)
-            {
-                var error = ResolveResponseError(ex);
-
-                var messageError = String.Format(error.Values.First(), baseUrl, endpoint.Route);
-
-                if(error.ContainsKey(HttpStatusCode.ServiceUnavailable))
-                    throw new IntegrationException(messageError, error.Keys.First());
-
-                throw new InfoException(messageError, ErrorCodeEnum.ExternalServiceFailure);
-            }
             catch (Exception ex)
             {
                 throw new UnexpectedException(ex.Message, ex);
             }
         }
 
-        private IDictionary<HttpStatusCode, string> ResolveResponseError(HttpRequestException exception)
+        public void ResolveErrorMessage(HttpRequestException ex)
         {
-            try
+            var messageServerError = ex.StatusCode switch
             {
-                var defaultMessageError = " host: {0} - path: {1}";
+                HttpStatusCode.RequestTimeout => "O recurso excedeu o tempo de resposta.",
+                HttpStatusCode.TooManyRequests => "Muitos requests ao recurso.",
+                HttpStatusCode.ServiceUnavailable => "O recurso não esta disponivel",
+                HttpStatusCode.GatewayTimeout => "O recurso downstream excedeu o tempo de resposta.",
+                HttpStatusCode.NotImplemented => "O recurso não implementado.",
+                _ => ""
+            };
 
-                if (exception.StatusCode is null && exception.Message.Contains("Nenhuma conexão pôde ser feita"))
-                    return new Dictionary<HttpStatusCode, string> {
-                        {
-                            HttpStatusCode.ServiceUnavailable,
-                            $"Não foi possivel se conectar ao serviço. {defaultMessageError}"
-                        } };
+            if (!string.IsNullOrEmpty(messageServerError))
+                throw new IntegrationException(messageServerError, (HttpStatusCode)ex.StatusCode);
 
-                var statusCode = exception.StatusCode;
-
-                var messageError = statusCode switch
-                {
-                    HttpStatusCode.NotFound => "Recurso não encontrado.",
-                    HttpStatusCode.Unauthorized => "Usuário não autorizado.",
-                    HttpStatusCode.Forbidden => "Usuário não autorizado.",
-                    HttpStatusCode.InternalServerError => "Erro interno no recurso.",
-                    _ => "Erro não qualificado."
-                };
-
-                messageError += defaultMessageError;
-
-                return new Dictionary<HttpStatusCode, string> { { statusCode ?? HttpStatusCode.InternalServerError, messageError } };
-            }
-            catch (Exception ex)
+            var messageUnauthorizedError = ex.StatusCode switch
             {
-                throw new UnexpectedException(ex.Message, ex);
-            }
+                HttpStatusCode.Unauthorized => "Usuario nao autorizado.",
+                HttpStatusCode.Forbidden => "Usuario nao tem permissao para usar esse recurso.",
+                _ => ""
+            };
+
+            if (!string.IsNullOrEmpty(messageUnauthorizedError))
+                throw new UnauthorizedException(messageUnauthorizedError);
+
+            var messageRequestError = ex.StatusCode switch
+            {
+                HttpStatusCode.BadRequest => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
+                HttpStatusCode.UnsupportedMediaType => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
+                _ => ""
+            };
         }
 
         private IRequestContext GetContext()
         {
-            return _httpContextAccessor.HttpContext?.RequestServices.GetService<IRequestContext>();
+            try
+            {
+                return _httpContextAccessor.HttpContext?.RequestServices.GetService<IRequestContext>();
+            }
+            catch (Exception ex)
+            {
+                throw new UnexpectedException($"Erro inesperado ao capturar o RequestContext {ex.Message}", ex);
+            }
         }
     }
 }

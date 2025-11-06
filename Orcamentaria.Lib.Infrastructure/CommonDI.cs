@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,15 +15,18 @@ using Orcamentaria.Lib.Application.HostedServices;
 using Orcamentaria.Lib.Application.Providers;
 using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.Contexts;
+using Orcamentaria.Lib.Domain.Entities;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Logs;
 using Orcamentaria.Lib.Domain.Providers;
+using Orcamentaria.Lib.Domain.Repositories;
 using Orcamentaria.Lib.Domain.Services;
 using Orcamentaria.Lib.Infrastructure.Contexts;
 using Orcamentaria.Lib.Infrastructure.Initializers;
 using Orcamentaria.Lib.Infrastructure.Middlewares;
+using Orcamentaria.Lib.Infrastructure.Repositories;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Orcamentaria.Lib.Infrastructure
@@ -44,6 +48,21 @@ namespace Orcamentaria.Lib.Infrastructure
             services.Replace(ServiceDescriptor.Singleton<IConfiguration>(newConfigs));
 
             return newConfigs;
+        }
+
+        public static IConfiguration ResolveCommonServicesWithMySql<T>(
+            string serviceName,
+            string apiVersion,
+            IServiceCollection services,
+            IConfiguration configuration,
+            Action customServices) where T : DbContext
+        {
+            ResolveCommonServices(serviceName, apiVersion, services, configuration, customServices);
+
+            services.AddDbContext<T>(options =>
+                options.UseMySQL(configuration.GetConnectionString("DefaultConnection")));
+
+            return configuration;
         }
 
         public static IConfiguration ResolveCommonServices(
@@ -124,6 +143,7 @@ namespace Orcamentaria.Lib.Infrastructure
             services.AddScoped<IServiceAuthContext, ServiceAuthContext>();
             services.AddScoped<IRequestContext, RequestContext>();
             services.AddScoped<IMessageBrokerConsumerService, RabbitMqConsumeService>();
+            services.AddScoped(typeof(IBasicRepository<>), typeof(BasicRepository<>));
             services.AddScoped<string>(_ => serviceName);
 
             if (configuration.GetSection("ServiceRegistryConfiguration") is null)
@@ -169,11 +189,11 @@ namespace Orcamentaria.Lib.Infrastructure
             services.AddSingleton<ITopologyBrokerService, RabbitMqTopologyBrokerService>();
 
             services.AddAuthentication(options =>
-                {
-                    options.DefaultScheme = "smartJwt";
-                    options.DefaultAuthenticateScheme = "smartJwt";
-                    options.DefaultChallengeScheme = "smartJwt";
-                })
+            {
+                options.DefaultScheme = "smartJwt";
+                options.DefaultAuthenticateScheme = "smartJwt";
+                options.DefaultChallengeScheme = "smartJwt";
+            })
                 .AddPolicyScheme("smartJwt", "Choose schema", o =>
                 {
                     o.ForwardDefaultSelector = ctx =>
@@ -212,7 +232,7 @@ namespace Orcamentaria.Lib.Infrastructure
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = "orcamentaria.auth",
-                    ValidAudience = "orcamentaria.user",
+                        ValidAudience = "orcamentaria.user",
                         IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
                     };
                 })

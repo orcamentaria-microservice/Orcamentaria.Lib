@@ -6,7 +6,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
     public class UnauthorizedException : DefaultException
     {
         const SeverityLevelEnum defaultSeverityLevel = SeverityLevelEnum.Warning;
-        const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.AccessDenied;
+        const ErrorCodeEnum defaultErrorCode = ErrorCodeEnum.Unauthorized;
 
         public UnauthorizedException(
             string message,

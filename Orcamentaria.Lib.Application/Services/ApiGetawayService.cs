@@ -5,6 +5,7 @@ using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Models.Exceptions;
+using Orcamentaria.Lib.Domain.Models.Responses;
 using Orcamentaria.Lib.Domain.Services;
 
 namespace Orcamentaria.Lib.Application.Services
@@ -74,7 +75,7 @@ namespace Orcamentaria.Lib.Application.Services
 
                 var content = new RequestDTO(serviceName, endpointName, @params, payload);
 
-                var response = await _httpClientService.SendAsync<Response<T>>(
+                var response = await _httpClientService.SendAsync<T>(
                         baseUrl: baseUrl,
                         endpoint: endpoint,
                         options: new OptionsRequest

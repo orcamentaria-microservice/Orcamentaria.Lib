@@ -5,7 +5,7 @@ namespace Orcamentaria.Lib.Domain.Exceptions
     public abstract class DefaultException : System.Exception
     {
         public ExceptionTypeEnum? Type { get; } = ExceptionTypeEnum.Default;
-        public SeverityLevelEnum? Severity { get; } = SeverityLevelEnum.Error;
+        public SeverityLevelEnum? Severity { get; } = SeverityLevelEnum.Info;
         public int? ErrorCode { get; }
 
         protected DefaultException(

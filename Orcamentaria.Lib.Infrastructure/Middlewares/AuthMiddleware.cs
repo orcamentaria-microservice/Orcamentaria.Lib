@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Orcamentaria.Lib.Domain.Contexts;
+using Orcamentaria.Lib.Domain.Exceptions;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace Orcamentaria.Lib.Infrastructure.Middlewares
@@ -29,7 +30,7 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 }
                 
                 var header = context.Request.Headers.Authorization.FirstOrDefault();
-                var jwtToken = TryGetBearer(header);
+                var bearerToken = TryGetBearer(header);
 
                 var tokenUse = principal.FindFirst("token_use")?.Value;
                 var audiences = principal.Claims
@@ -39,7 +40,7 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
 
                 if(string.Equals(tokenUse, "bootstrap", StringComparison.OrdinalIgnoreCase))
                 {
-                    serviceAuthContext.ServiceToken = jwtToken;
+                    serviceAuthContext.BearerToken = bearerToken;
                     await _next(context);
                     return;
                 }
@@ -53,9 +54,9 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     long.TryParse(claims.Where(c => c.Type == "Company").First().Value, out var companyId);
 
                     userAuthContext.UserId = userId;
-                    userAuthContext.UserEmail = email;
-                    userAuthContext.UserCompanyId = companyId;
-                    userAuthContext.UserToken = jwtToken;
+                    userAuthContext.Email = email;
+                    userAuthContext.CompanyId = companyId;
+                    userAuthContext.BearerToken = bearerToken;
 
                     await _next(context);
                     return;
@@ -67,16 +68,20 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     var serviceName = claims.Where(c => c.Type == "name").First().Value;
 
                     serviceAuthContext.ServiceId = serviceId;
-                    serviceAuthContext.ServiceName = serviceName;
-                    serviceAuthContext.ServiceToken = jwtToken;
+                    serviceAuthContext.Name = serviceName;
+                    serviceAuthContext.BearerToken = bearerToken;
 
                     await _next(context);
                     return;
                 }
             }
-            catch (Exception)
+            catch (DefaultException)
             {
                 throw;
+            }
+            catch (Exception ex)
+            {
+                throw new UnexpectedException("Erro ao capturar dados do jwt token.", ex);
             }
         }
 
