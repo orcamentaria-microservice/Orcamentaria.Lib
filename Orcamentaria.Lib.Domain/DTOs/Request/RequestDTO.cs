@@ -19,7 +19,7 @@ namespace Orcamentaria.Lib.Domain.DTOs.Request
         {
             ServiceName = serviceName;
             EndpointName = endpointName;
-            Params = @params.Select(x => new RequestParamDTO { ParamName = x.Key, ParamValue = x.Value });
+            Params = @params?.Select(x => new RequestParamDTO { ParamName = x.Key, ParamValue = x.Value });
             Content = content;
         }
     }

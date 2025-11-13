@@ -25,9 +25,13 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                 else
                     requestContext.RequestId = Guid.NewGuid().ToString();
             }
+            catch (DefaultException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                throw new UnexpectedException("Erro ao capturar RequestId e RequestOrderId", ex);
+                throw new UnexpectedException("Erro ao capturar dados do header/jwt token.", ex);
             }
 
             await _next(context);

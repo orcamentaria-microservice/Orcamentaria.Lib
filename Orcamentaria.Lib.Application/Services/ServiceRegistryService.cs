@@ -13,33 +13,30 @@ namespace Orcamentaria.Lib.Application.Services
 {
     public class ServiceRegistryService : IServiceRegistryService
     {
-        private static string TOKEN_KEY = "_tokenRegistry_";
-
         private readonly IApiGetawayService _apiGetawayService;
         private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IHttpClientService _httpClientService;
-        private readonly IMemoryCacheService _memoryCacheService;
 
         public ServiceRegistryService(
             IApiGetawayService apiGetawayService,
             IOptions<ApiGetawayConfiguration> apiGetawayConfiguration,
             IServiceScopeFactory scopeFactory,
-            IHttpClientService httpClientService,
-            IMemoryCacheService memoryCacheService)
+            IHttpClientService httpClientService)
         {
             _apiGetawayService = apiGetawayService;
             _apiGetawayConfiguration = apiGetawayConfiguration.Value;
             _scopeFactory = scopeFactory;
             _httpClientService = httpClientService;
-            _memoryCacheService = memoryCacheService;
         }
 
         public async Task<Response<Task>> Heartbeat(string serviceId, bool forceTokenGeneration = false)
         {
             try
             {
-                var tokenAuth = await GetTokenAsync(forceTokenGeneration);
+                using var scope = _scopeFactory.CreateScope();
+                var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
+                var tokenAuth = await tokenProvider.GetTokenAsync(forceTokenGeneration);
 
                 IDictionary<string, string> @params = new Dictionary<string, string>();
 
@@ -79,7 +76,9 @@ namespace Orcamentaria.Lib.Application.Services
         {
             try
             {
-                var tokenAuth = await GetTokenAsync(true);
+                using var scope = _scopeFactory.CreateScope();
+                var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
+                var tokenAuth = await tokenProvider.GetTokenAsync(true);
 
                 var resource = new ResourceConfiguration
                 {
@@ -122,7 +121,9 @@ namespace Orcamentaria.Lib.Application.Services
 
                 if (endpoint.RequiredAuthorization)
                 {
-                    tokenAuth = await GetTokenAsync(forceTokenGeneration);
+                    using var scope = _scopeFactory.CreateScope();
+                    var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
+                    tokenAuth = await tokenProvider.GetTokenAsync(forceTokenGeneration);
                 }
 
                 var response = await _httpClientService.SendAsync<T>(
@@ -150,36 +151,5 @@ namespace Orcamentaria.Lib.Application.Services
                 throw new UnexpectedException(ex.Message, ex);
             }
         }
-
-        #region Private Methods
-        private async Task<string> GetTokenAsync(bool forceTokenGeneration = false)
-        {
-            try
-            {
-                if (forceTokenGeneration || !_memoryCacheService.GetMemoryCache(TOKEN_KEY, out string? tokenService))
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var tokenProvider = scope.ServiceProvider.GetRequiredService<ITokenProvider>();
-                    tokenService = await tokenProvider.GetTokenAsync();
-
-                    if (String.IsNullOrWhiteSpace(tokenService))
-                        throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
-
-                    _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
-                }
-                return tokenService;
-            }
-            catch (DefaultException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                throw new UnexpectedException(ex.Message, ex);
-            }
-        }
-
-        #endregion
-
     }
 }

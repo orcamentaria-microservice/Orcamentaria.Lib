@@ -5,7 +5,6 @@ using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Domain.Models.Responses;
 using Orcamentaria.Lib.Domain.Services;
-using System;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
@@ -57,12 +56,14 @@ namespace Orcamentaria.Lib.Application.Services
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 }), Encoding.UTF8, "application/json");
 
-            var stopWatch = Stopwatch.StartNew();
-            var response = await _httpClient.SendAsync(requestMessage);
-            var responseTime = stopWatch.Elapsed;
-
+            HttpResponseMessage response = null;
+            TimeSpan responseTime = TimeSpan.FromMilliseconds(0);
+            Stopwatch watch = Stopwatch.StartNew();
             try
             {
+                response = await _httpClient.SendAsync(requestMessage);
+                responseTime = watch.Elapsed;
+
                 response.EnsureSuccessStatusCode();
 
                 return new HttpResponse<Response<T>>
@@ -95,22 +96,41 @@ namespace Orcamentaria.Lib.Application.Services
             {
                 throw new UnexpectedException(ex.Message, ex);
             }
+            finally
+            {
+
+            }
         }
 
-        public void ResolveErrorMessage(HttpRequestException ex)
+        private void ResolveErrorMessage(HttpRequestException ex)
         {
-            var messageServerError = ex.StatusCode switch
+            if (ex.StatusCode is null && ex.HttpRequestError == HttpRequestError.ConnectionError)
+                throw new ServiceUnavailableException("O serviço está não está disponivel.");
+
+            var messageUnavailableError = ex.StatusCode switch
+            {
+                HttpStatusCode.ServiceUnavailable => "O serviço está não está disponivel.",
+                _ => ""
+            };
+
+            if (!string.IsNullOrEmpty(messageUnavailableError))
+                throw new ServiceUnavailableException("O serviço está não está disponivel.");
+
+
+            var messageRequestError = ex.StatusCode switch
             {
                 HttpStatusCode.RequestTimeout => "O recurso excedeu o tempo de resposta.",
                 HttpStatusCode.TooManyRequests => "Muitos requests ao recurso.",
                 HttpStatusCode.ServiceUnavailable => "O recurso não esta disponivel",
                 HttpStatusCode.GatewayTimeout => "O recurso downstream excedeu o tempo de resposta.",
                 HttpStatusCode.NotImplemented => "O recurso não implementado.",
+                HttpStatusCode.BadRequest => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
+                HttpStatusCode.UnsupportedMediaType => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
                 _ => ""
             };
 
-            if (!string.IsNullOrEmpty(messageServerError))
-                throw new IntegrationException(messageServerError, (HttpStatusCode)ex.StatusCode);
+            if (!string.IsNullOrEmpty(messageRequestError))
+                throw new IntegrationException(messageRequestError, (HttpStatusCode)ex.StatusCode);
 
             var messageUnauthorizedError = ex.StatusCode switch
             {
@@ -121,13 +141,6 @@ namespace Orcamentaria.Lib.Application.Services
 
             if (!string.IsNullOrEmpty(messageUnauthorizedError))
                 throw new UnauthorizedException(messageUnauthorizedError);
-
-            var messageRequestError = ex.StatusCode switch
-            {
-                HttpStatusCode.BadRequest => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
-                HttpStatusCode.UnsupportedMediaType => "Requisicao invalida. Valide os parametros (Params) e conteudo (Content) enviado.",
-                _ => ""
-            };
         }
 
         private IRequestContext GetContext()

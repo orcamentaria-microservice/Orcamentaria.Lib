@@ -3,7 +3,7 @@
     public class FilterParam
     {
         public string Field { get; init; } = default!;
-        public string Operator { get; init; } = "=";
-        public string? Value { get; init; } = string.Empty;
+        public string Operator { get; init; } = "eq";
+        public object? Value { get; init; }
     }
 }

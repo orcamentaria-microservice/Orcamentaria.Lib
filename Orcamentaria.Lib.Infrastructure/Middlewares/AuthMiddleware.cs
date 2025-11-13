@@ -15,20 +15,32 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
         }
 
         public async Task InvokeAsync(
-            HttpContext context, 
+            HttpContext context,
             IUserAuthContext userAuthContext, 
+            IServiceAuthContext serviceAuthContext)
+        {
+            var principal = context.User;
+
+            if (principal?.Identity?.IsAuthenticated == false)
+            {
+                await _next(context);
+                return;
+            }
+
+            ResolveContext(context, userAuthContext, serviceAuthContext);
+
+            await _next(context);
+        }
+
+        #region private methods
+        private void ResolveContext(
+            HttpContext context,
+            IUserAuthContext userAuthContext,
             IServiceAuthContext serviceAuthContext)
         {
             try
             {
                 var principal = context.User;
-
-                if (principal?.Identity?.IsAuthenticated == false)
-                {
-                    await _next(context);
-                    return;
-                }
-                
                 var header = context.Request.Headers.Authorization.FirstOrDefault();
                 var bearerToken = TryGetBearer(header);
 
@@ -38,13 +50,12 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     .Select(c => c.Value)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                if(string.Equals(tokenUse, "bootstrap", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(tokenUse, "bootstrap", StringComparison.OrdinalIgnoreCase))
                 {
                     serviceAuthContext.BearerToken = bearerToken;
-                    await _next(context);
                     return;
                 }
-                    
+
                 var claims = principal.Claims;
 
                 if (string.Equals(tokenUse, "user", StringComparison.OrdinalIgnoreCase))
@@ -57,8 +68,6 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     userAuthContext.Email = email;
                     userAuthContext.CompanyId = companyId;
                     userAuthContext.BearerToken = bearerToken;
-
-                    await _next(context);
                     return;
                 }
 
@@ -70,8 +79,6 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
                     serviceAuthContext.ServiceId = serviceId;
                     serviceAuthContext.Name = serviceName;
                     serviceAuthContext.BearerToken = bearerToken;
-
-                    await _next(context);
                     return;
                 }
             }
@@ -81,11 +88,10 @@ namespace Orcamentaria.Lib.Infrastructure.Middlewares
             }
             catch (Exception ex)
             {
-                throw new UnexpectedException("Erro ao capturar dados do jwt token.", ex);
+                throw new UnexpectedException("Erro ao capturar dados do header/jwt token.", ex);
             }
         }
 
-        #region private methods
         private static string? TryGetBearer(string? authHeader)
         {
             if (string.IsNullOrWhiteSpace(authHeader)) return null;

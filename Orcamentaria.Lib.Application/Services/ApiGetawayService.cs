@@ -84,12 +84,6 @@ namespace Orcamentaria.Lib.Application.Services
                             Content = content
                         });
 
-                if (!response.Content.Success)
-                    throw new UnexpectedException(
-                        String.Join(" || ", response.Content.Error.MessageErrors.Select(x => x.Message)), 
-                        response.Content.Error.ErrorCode, 
-                        SeverityLevelEnum.Warning);
-
                 return response.Content;
             }
             catch (DefaultException)

@@ -7,8 +7,8 @@
         Conflict = 409,
         ValidationFailed = 422,
         InternalError = 500,
-        UnexpectedError = 503,
         DatabaseError = 501,
         ExternalServiceFailure = 502,
+        ServiceUnavailable = 503,
     }
 }

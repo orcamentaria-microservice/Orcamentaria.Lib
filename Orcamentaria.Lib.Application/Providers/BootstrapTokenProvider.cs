@@ -23,7 +23,7 @@ namespace Orcamentaria.Lib.Application.Providers
             _configuration = configuration;
         }
 
-        public async Task<string> GetTokenAsync()
+        public async Task<string> GetTokenAsync(bool forceTokenGeneration = false)
         {
             try
             {

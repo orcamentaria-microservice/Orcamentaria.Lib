@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
+using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.DTOs.Authentication;
+using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
 using Orcamentaria.Lib.Domain.Providers;
@@ -9,45 +11,58 @@ namespace Orcamentaria.Lib.Application.Providers
 {
     public class ServiceTokenProvider : ITokenProvider
     {
+        private static string TOKEN_KEY = "_tokenService_";
         private readonly ServiceConfiguration _serviceConfiguration;
         private readonly IApiGetawayService _apiGetawayService;
         private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
+        private readonly IMemoryCacheService _memoryCacheService;
 
         public ServiceTokenProvider(
             IOptions<ServiceConfiguration> serviceConfiguration,
             IApiGetawayService apiGetawayService,
-            IOptions<ApiGetawayConfiguration> apiGetawayConfiguration)
+            IOptions<ApiGetawayConfiguration> apiGetawayConfiguration,
+            IMemoryCacheService memoryCacheService)
         {
             _serviceConfiguration = serviceConfiguration.Value;
             _apiGetawayService = apiGetawayService;
             _apiGetawayConfiguration = apiGetawayConfiguration.Value;
+            _memoryCacheService = memoryCacheService;
         }
 
-        public async Task<string> GetTokenAsync()
+        public async Task<string> GetTokenAsync(bool forceTokenGeneration = false)
         {
             try
             {
-                var resource = new ResourceConfiguration
+                if (forceTokenGeneration || !_memoryCacheService.GetMemoryCache(TOKEN_KEY, out string? tokenService))
                 {
-                    ServiceName = "AuthService",
-                    EndpointName = "AuthenticateService",
-                    Params = new List<string> { "clientId", "clientSecret" }
-                };
+                    var resource = new ResourceConfiguration
+                    {
+                        ServiceName = "AuthService",
+                        EndpointName = "AuthenticateService",
+                        Params = new List<string> { "clientId", "clientSecret" }
+                    };
 
-                IDictionary<string, string> @params = new Dictionary<string, string>();
+                    IDictionary<string, string> @params = new Dictionary<string, string>();
 
-                @params.Add("clientId", _serviceConfiguration.ClientId);
-                @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
+                    @params.Add("clientId", _serviceConfiguration.ClientId);
+                    @params.Add("clientSecret", _serviceConfiguration.ClientSecret);
 
-                var response = await _apiGetawayService.Routing<AuthenticationServiceResponseDTO>(
-                    _apiGetawayConfiguration.BaseUrl,
-                    resource.ServiceName,
-                    resource.EndpointName,
-                    String.Empty,
-                    @params,
-                    null);
+                    var response = await _apiGetawayService.Routing<AuthenticationServiceResponseDTO>(
+                        _apiGetawayConfiguration.BaseUrl,
+                        resource.ServiceName,
+                        resource.EndpointName,
+                        String.Empty,
+                        @params,
+                        null);
 
-                return response.Data.Token;
+                    tokenService = response.Data.Token;
+
+                    if (String.IsNullOrWhiteSpace(tokenService))
+                        throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
+
+                    _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
+                }
+                return tokenService;
             }
             catch (DefaultException)
             {

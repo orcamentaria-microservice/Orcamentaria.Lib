@@ -44,7 +44,7 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
                     }
                 };
 
-                query = GridQuery.ApplyFilters(query, filters, _userAuthContext.CompanyId);
+                query = GridQueryHelper.ApplyFiltersWithCompanyId(query, filters, _userAuthContext.CompanyId);
 
                 return await query.FirstOrDefaultAsync();
             }
@@ -66,11 +66,11 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
                 foreach (var include in includes)
                     query = query.Include(include);
 
-                query = GridQuery.ApplyFilters(query, gridParams.Filters, _userAuthContext.CompanyId);
+                query = GridQueryHelper.ApplyFiltersWithCompanyId(query, gridParams.Filters, _userAuthContext.CompanyId);
 
-                query = GridQuery.ApplySorting(query, gridParams.SortField, gridParams.SortDesc ?? false);
+                query = GridQueryHelper.ApplySorting(query, gridParams.SortField, gridParams.SortDesc ?? false);
 
-                var (page, pageSize, skip) = GridQuery.NormalizePaging(gridParams.Page, gridParams.PageSize);
+                var (page, pageSize, skip) = GridQueryHelper.NormalizePaging(gridParams.Page, gridParams.PageSize);
 
                 try
                 {
@@ -95,19 +95,19 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
 
         public virtual async Task<TEntity> InsertAsync(TEntity entity)
         {
-            if (GridQuery.HasFieldMap<TEntity>("CompanyId"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CompanyId"))
                 _context.Entry(entity).Property("CompanyId").CurrentValue = _userAuthContext.CompanyId;
 
-            if (GridQuery.HasFieldMap<TEntity>("CreatedAt"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedAt"))
                 _context.Entry(entity).Property("CreatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQuery.HasFieldMap<TEntity>("CreatedBy"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedBy"))
                 _context.Entry(entity).Property("CreatedBy").CurrentValue = _userAuthContext.UserId;
 
-            if (GridQuery.HasFieldMap<TEntity>("UpdatedAt"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedAt"))
                 _context.Entry(entity).Property("UpdatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQuery.HasFieldMap<TEntity>("UpdatedBy"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedBy"))
                 _context.Entry(entity).Property("UpdatedBy").CurrentValue = _userAuthContext.UserId;
 
 
@@ -122,19 +122,19 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
             if (existing is null)
                 throw new KeyNotFoundException($"Entity with id {id} not found.");
 
-            if (GridQuery.HasFieldMap<TEntity>("CompanyId"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CompanyId"))
                 _context.Entry(entity).Property("CompanyId").CurrentValue = _context.Entry(existing).Property("CompanyId").OriginalValue;
 
-            if (GridQuery.HasFieldMap<TEntity>("CreatedAt"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedAt"))
                 _context.Entry(entity).Property("CreatedAt").CurrentValue = _context.Entry(existing).Property("CreatedAt").OriginalValue;
 
-            if (GridQuery.HasFieldMap<TEntity>("CreatedBy"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedBy"))
                 _context.Entry(entity).Property("CreatedBy").CurrentValue = _context.Entry(existing).Property("CreatedBy").OriginalValue;
 
-            if (GridQuery.HasFieldMap<TEntity>("UpdatedAt"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedAt"))
                 _context.Entry(entity).Property("UpdatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQuery.HasFieldMap<TEntity>("UpdatedBy"))
+            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedBy"))
                 _context.Entry(entity).Property("UpdatedBy").CurrentValue = _userAuthContext.UserId;
 
             _context.Entry(existing).CurrentValues.SetValues(entity);

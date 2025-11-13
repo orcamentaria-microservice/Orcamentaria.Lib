@@ -1,21 +1,15 @@
-﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Orcamentaria.Lib.Application.HostedServices;
 using Orcamentaria.Lib.Application.Providers;
 using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.Contexts;
-using Orcamentaria.Lib.Domain.Entities;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models.Configurations;
@@ -24,40 +18,25 @@ using Orcamentaria.Lib.Domain.Providers;
 using Orcamentaria.Lib.Domain.Repositories;
 using Orcamentaria.Lib.Domain.Services;
 using Orcamentaria.Lib.Infrastructure.Contexts;
-using Orcamentaria.Lib.Infrastructure.Initializers;
-using Orcamentaria.Lib.Infrastructure.Middlewares;
+using Orcamentaria.Lib.Infrastructure.Helpers;
 using Orcamentaria.Lib.Infrastructure.Repositories;
 using System.Text.Json.Serialization.Metadata;
 
-namespace Orcamentaria.Lib.Infrastructure
+namespace Orcamentaria.Lib.Infrastructure.Configures
 {
-    public static class CommonDI
+
+    public static class DependencyInjectionConfigure
     {
         readonly static string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
-        public static IConfiguration ResolveConfigs(
-            string serviceName,
-            IServiceCollection services,
-            IConfiguration configuration)
-        {
-            var newConfigs = new ConfigurationBagInitializer(serviceName)
-                .InitializeAsync(configuration)
-                .GetAwaiter()
-                .GetResult();
-
-            services.Replace(ServiceDescriptor.Singleton<IConfiguration>(newConfigs));
-
-            return newConfigs;
-        }
-
         public static IConfiguration ResolveCommonServicesWithMySql<T>(
+            this IServiceCollection services,
+            IConfiguration configuration,
             string serviceName,
             string apiVersion,
-            IServiceCollection services,
-            IConfiguration configuration,
             Action customServices) where T : DbContext
         {
-            ResolveCommonServices(serviceName, apiVersion, services, configuration, customServices);
+            ResolveCommonServices(services, configuration, serviceName, apiVersion, customServices);
 
             services.AddDbContext<T>(options =>
                 options.UseMySQL(configuration.GetConnectionString("DefaultConnection")));
@@ -66,12 +45,14 @@ namespace Orcamentaria.Lib.Infrastructure
         }
 
         public static IConfiguration ResolveCommonServices(
+            this IServiceCollection services,
+            IConfiguration configuration,
             string serviceName,
             string apiVersion,
-            IServiceCollection services,
-            IConfiguration configuration,
             Action customServices)
         {
+            var formatedServiceName = ServiceNameHelper.FormatServiceName(serviceName);
+
             var memorySource = new MemoryConfigurationSource();
             var configRoot = new ConfigurationBuilder()
                 .AddConfiguration(configuration)
@@ -102,18 +83,22 @@ namespace Orcamentaria.Lib.Infrastructure
                     Scheme = "Bearer"
                 });
 
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                c.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
                 {
                     {
-                        new OpenApiSecurityScheme
+                        new OpenApiSecuritySchemeReference("Bearer")
                         {
-                            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                            Reference = new OpenApiReferenceWithDescription 
+                            { 
+                                Type = ReferenceType.SecurityScheme, 
+                                Id = "Bearer" 
+                            }
                         },
-                        Array.Empty<string>()
+                        new List<string>()
                     }
                 });
 
-                c.SwaggerDoc(apiVersion, new OpenApiInfo { Title = FormatServiceName(serviceName), Version = apiVersion });
+                c.SwaggerDoc(apiVersion, new OpenApiInfo { Title = formatedServiceName, Version = apiVersion });
             });
 
             services.AddControllers()
@@ -162,19 +147,19 @@ namespace Orcamentaria.Lib.Infrastructure
                 options.SerializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver
                 {
                     Modifiers = { ti =>
+            {
+                if (ti.Type == typeof(ExceptionOrigin))
+                {
+                    ti.PolymorphismOptions = new JsonPolymorphismOptions
                     {
-                        if (ti.Type == typeof(ExceptionOrigin))
+                        DerivedTypes =
                         {
-                            ti.PolymorphismOptions = new JsonPolymorphismOptions
-                            {
-                                DerivedTypes =
-                                {
-                                    new JsonDerivedType(typeof(RequestExceptionOrigin), "request"),
-                                    new JsonDerivedType(typeof(ServiceExceptionOrigin), "service")
-                                }
-                            };
+                            new JsonDerivedType(typeof(RequestExceptionOrigin), "request"),
+                            new JsonDerivedType(typeof(ServiceExceptionOrigin), "service")
                         }
-                    }}
+                    };
+                }
+            }}
                 };
             });
 
@@ -233,7 +218,7 @@ namespace Orcamentaria.Lib.Infrastructure
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = "orcamentaria.auth",
                         ValidAudience = "orcamentaria.user",
-                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(formatedServiceName, privateKey)
                     };
                 })
                 .AddJwtBearer("serviceJwt", options =>
@@ -250,7 +235,7 @@ namespace Orcamentaria.Lib.Infrastructure
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = "orcamentaria.auth",
                         ValidAudience = "orcamentaria.service",
-                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(formatedServiceName, privateKey)
                     };
                 })
                 .AddJwtBearer("bootstrapJwt", options =>
@@ -267,7 +252,7 @@ namespace Orcamentaria.Lib.Infrastructure
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = "orcamentaria.auth",
                         ValidAudience = "orcamentaria.bootstrap",
-                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(FormatServiceName(serviceName), privateKey)
+                        IssuerSigningKey = rsaService.GenerateRsaSecurityKey(formatedServiceName, privateKey)
                     };
                 });
 
@@ -302,72 +287,5 @@ namespace Orcamentaria.Lib.Infrastructure
 
             return configuration;
         }
-
-        public static void ConfigureCommon(
-            string serviceName,
-            string apiVersion,
-            IApplicationBuilder app,
-            IWebHostEnvironment env)
-        {
-            app.Use(async (context, next) =>
-            {
-                var path = context.Request.Path.Value;
-                var isSwaggerJson = path != null && path.Contains("/swagger/v1/swagger.json");
-
-                if (isSwaggerJson)
-                {
-                    var serviceConfiguration = context.RequestServices.GetRequiredService<IOptions<ServiceConfiguration>>().Value;
-                    var clientId = context.Request.Headers["ClientId"].ToString();
-                    var clientSecret = context.Request.Headers["ClientSecret"].ToString();
-
-                    if (!clientId.Equals(serviceConfiguration.ClientId, StringComparison.OrdinalIgnoreCase) ||
-                    !clientSecret.Equals(serviceConfiguration.ClientSecret, StringComparison.OrdinalIgnoreCase))
-                    {
-                        context.Response.StatusCode = 401;
-                        await context.Response.WriteAsync("Unauthorized to access Swagger JSON");
-                        return;
-                    }
-                }
-
-                await next();
-            });
-
-            app.UseSwagger();
-
-            if (env.IsDevelopment())
-            {
-                app.UseSwaggerUI(c => c.SwaggerEndpoint($"/swagger/{apiVersion}/swagger.json", $"{FormatServiceName(serviceName)} {apiVersion}"));
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-
-            app.UseCors(MyAllowSpecificOrigins);
-
-
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseMiddleware<ErrorHandlingMiddleware>();
-            app.UseMiddleware<AuthMiddleware>();
-            app.UseMiddleware<RequestMiddleware>();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
-        }
-
-        public static void AddServiceRegistryHosted(
-            IServiceCollection services,
-            IConfiguration configuration)
-        {
-            if (configuration.GetSection("ServiceConfiguration") is null)
-                throw new Exception("Serviço não configurado.");
-
-            services.Configure<ServiceConfiguration>(configuration.GetSection("ServiceConfiguration"));
-            services.AddHostedService<ServiceRegistryHostedService>();
-        }
-
-        private static string FormatServiceName(string serviceName) => $"{serviceName}.API";
     }
 }
