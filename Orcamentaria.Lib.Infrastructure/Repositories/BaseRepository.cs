@@ -9,14 +9,14 @@ using System.Linq.Expressions;
 
 namespace Orcamentaria.Lib.Infrastructure.Repositories
 {
-    public class BasicRepository<TEntity> : IBasicRepository<TEntity> where TEntity : class
+    public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : class
     {
         protected readonly DbContext _context;
         protected readonly DbSet<TEntity> _dbSet;
         private readonly IUserAuthContext _userAuthContext;
 
 
-        public BasicRepository(
+        public BaseRepository(
             DbContext context,
             IUserAuthContext userAuthContext)
         {
@@ -44,7 +44,7 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
                     }
                 };
 
-                query = GridQueryHelper.ApplyFiltersWithCompanyId(query, filters, _userAuthContext.CompanyId);
+                query = ApplyFiltersWithCompanyIdWrapper(query, filters, _userAuthContext.CompanyId);
 
                 return await query.FirstOrDefaultAsync();
             }
@@ -66,11 +66,11 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
                 foreach (var include in includes)
                     query = query.Include(include);
 
-                query = GridQueryHelper.ApplyFiltersWithCompanyId(query, gridParams.Filters, _userAuthContext.CompanyId);
+                query = ApplyFiltersWithCompanyIdWrapper(query, gridParams.Filters, _userAuthContext.CompanyId);
 
-                query = GridQueryHelper.ApplySorting(query, gridParams.SortField, gridParams.SortDesc ?? false);
+                query = ApplySortingWrapper(query, gridParams.SortField, gridParams.SortDesc ?? false);
 
-                var (page, pageSize, skip) = GridQueryHelper.NormalizePaging(gridParams.Page, gridParams.PageSize);
+                var (page, pageSize, skip) = NormalizePagingWrapper(gridParams.Page, gridParams.PageSize);
 
                 try
                 {
@@ -95,25 +95,35 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
 
         public virtual async Task<TEntity> InsertAsync(TEntity entity)
         {
-            if (GridQueryHelper.HasFieldMap<TEntity>("CompanyId"))
+            if (HasFieldMapWrapper("CompanyId"))
                 _context.Entry(entity).Property("CompanyId").CurrentValue = _userAuthContext.CompanyId;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedAt"))
+            if (HasFieldMapWrapper("CreatedAt"))
                 _context.Entry(entity).Property("CreatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedBy"))
+            if (HasFieldMapWrapper("CreatedBy"))
                 _context.Entry(entity).Property("CreatedBy").CurrentValue = _userAuthContext.UserId;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedAt"))
+            if (HasFieldMapWrapper("UpdatedAt"))
                 _context.Entry(entity).Property("UpdatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedBy"))
+            if (HasFieldMapWrapper("UpdatedBy"))
                 _context.Entry(entity).Property("UpdatedBy").CurrentValue = _userAuthContext.UserId;
 
-
-            _dbSet.Add(entity);
-            await _context.SaveChangesAsync();
-            return entity;
+            try
+            {
+                _dbSet.Add(entity);
+                await _context.SaveChangesAsync();
+                return entity;
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new DatabaseException($"Entidade inválida: {ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DatabaseException($"Erro inesperado ao atualizar entidade: {ex.Message}", ex);
+            }
         }
 
         public virtual async Task<TEntity> UpdateAsync(long id, TEntity entity)
@@ -122,24 +132,35 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
             if (existing is null)
                 throw new KeyNotFoundException($"Entity with id {id} not found.");
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("CompanyId"))
+            if (HasFieldMapWrapper("CompanyId"))
                 _context.Entry(entity).Property("CompanyId").CurrentValue = _context.Entry(existing).Property("CompanyId").OriginalValue;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedAt"))
+            if (HasFieldMapWrapper("CreatedAt"))
                 _context.Entry(entity).Property("CreatedAt").CurrentValue = _context.Entry(existing).Property("CreatedAt").OriginalValue;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("CreatedBy"))
+            if (HasFieldMapWrapper("CreatedBy"))
                 _context.Entry(entity).Property("CreatedBy").CurrentValue = _context.Entry(existing).Property("CreatedBy").OriginalValue;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedAt"))
+            if (HasFieldMapWrapper("UpdatedAt"))
                 _context.Entry(entity).Property("UpdatedAt").CurrentValue = DateTime.Now;
 
-            if (GridQueryHelper.HasFieldMap<TEntity>("UpdatedBy"))
+            if (HasFieldMapWrapper("UpdatedBy"))
                 _context.Entry(entity).Property("UpdatedBy").CurrentValue = _userAuthContext.UserId;
 
-            _context.Entry(existing).CurrentValues.SetValues(entity);
-            await _context.SaveChangesAsync();
-            return existing;
+            try
+            {
+                _context.Entry(existing).CurrentValues.SetValues(entity);
+                await _context.SaveChangesAsync();
+                return existing;
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new DatabaseException($"Entidade inválida: {ex.Message}", ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DatabaseException($"Erro inesperado ao salvar entidade: {ex.Message}", ex);
+            }
         }
 
         public virtual async Task<TEntity> DeleteAsync(long id)
@@ -148,9 +169,38 @@ namespace Orcamentaria.Lib.Infrastructure.Repositories
             if (existing is null)
                 throw new KeyNotFoundException($"Entity with id {id} not found.");
 
-            _dbSet.Remove(existing);
-            await _context.SaveChangesAsync();
-            return existing;
+            try
+            {
+                _dbSet.Remove(existing);
+                await _context.SaveChangesAsync();
+                return existing;
+            }
+            catch (Exception ex)
+            {
+                throw new DatabaseException($"Erro inesperado ao excluir entidade: {ex.Message}", ex);
+            }
         }
+
+        #region wrappers
+            protected virtual IQueryable<TEntity> ApplyFiltersWithCompanyIdWrapper(
+            IQueryable<TEntity> query,
+            IEnumerable<FilterParam>? filters,
+            long companyId)
+            => GridQueryHelper.ApplyFiltersWithCompanyId(query, filters, companyId);
+
+        protected virtual IQueryable<TEntity> ApplySortingWrapper(
+            IQueryable<TEntity> query,
+            string? sortField,
+            bool sortDesc)
+            => GridQueryHelper.ApplySorting(query, sortField, sortDesc);
+
+        protected virtual (int Page, int PageSize, int Skip) NormalizePagingWrapper(
+            int page, 
+            int pageSize, 
+            int maxPageSize = 100)
+            => GridQueryHelper.NormalizePaging(page, pageSize, maxPageSize);
+
+        protected virtual bool HasFieldMapWrapper(string field) => GridQueryHelper.HasFieldMap<TEntity>(field);
+        #endregion
     }
 }

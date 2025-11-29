@@ -128,7 +128,7 @@ namespace Orcamentaria.Lib.Infrastructure.Configures
             services.AddScoped<IServiceAuthContext, ServiceAuthContext>();
             services.AddScoped<IRequestContext, RequestContext>();
             services.AddScoped<IMessageBrokerConsumerService, RabbitMqConsumeService>();
-            services.AddScoped(typeof(IBasicRepository<>), typeof(BasicRepository<>));
+            services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
             services.AddScoped<string>(_ => serviceName);
 
             if (configuration.GetSection("ServiceRegistryConfiguration") is null)

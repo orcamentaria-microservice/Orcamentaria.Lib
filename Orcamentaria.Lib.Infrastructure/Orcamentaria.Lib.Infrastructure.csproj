@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>Orcamentaria.Lib.Infrastructure</PackageId>
-	<Version>5.3.2</Version>
+	<Version>5.3.4</Version>
 	<Authors>Marcelo Fernando</Authors>
 	<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>

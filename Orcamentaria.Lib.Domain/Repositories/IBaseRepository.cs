@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 
 namespace Orcamentaria.Lib.Domain.Repositories
 {
-    public interface IBasicRepository<TEntity> where TEntity : class
+    public interface IBaseRepository<TEntity> where TEntity : class
     {
         Task<TEntity?> GetByIdAsync(long id, params Expression<Func<TEntity, object>>[] includes);
         Task<(IEnumerable<TEntity?>, ResponsePagination pagination)> GetAsync(GridParams gridParams, params Expression<Func<TEntity, object>>[] includes);
