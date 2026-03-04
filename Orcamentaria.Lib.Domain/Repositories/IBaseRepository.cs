@@ -7,7 +7,9 @@ namespace Orcamentaria.Lib.Domain.Repositories
     public interface IBaseRepository<TEntity> where TEntity : class
     {
         Task<TEntity?> GetByIdAsync(long id, params Expression<Func<TEntity, object>>[] includes);
+        Task<TEntity?> GetByIdWithoutCompanyIdAsync(long id, params Expression<Func<TEntity, object>>[] includes);
         Task<(IEnumerable<TEntity?>, ResponsePagination pagination)> GetAsync(GridParams gridParams, params Expression<Func<TEntity, object>>[] includes);
+        Task<(IEnumerable<TEntity?>, ResponsePagination pagination)> GetWithoutCompanyIdAsync(GridParams gridParams, params Expression<Func<TEntity, object>>[] includes);
         Task<TEntity> InsertAsync(TEntity entity);
         Task<TEntity> UpdateAsync(long id, TEntity entity);
         Task<TEntity> DeleteAsync(long id);

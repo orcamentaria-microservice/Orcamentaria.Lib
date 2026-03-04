@@ -2,33 +2,33 @@
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Moq.Protected;
-using Orcamentaria.Lib.Test.Contexts;
-using Orcamentaria.Lib.Test.Fixtures;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Models;
 using Orcamentaria.Lib.Infrastructure.Contexts;
 using Orcamentaria.Lib.Infrastructure.Repositories;
+using Orcamentaria.Lib.Test.Fixtures;
 using Xunit;
 
-namespace Orcamentaria.EquipmentService.Test.Repositories
+namespace Orcamentaria.Lib.Test.Repositories
 {
-    public abstract class BasicRepositoryTest<T, C> 
+    public class ReadWithCompanyRepositoryTests<T, C>
         where T : class
-        where C : DbContextTest
+        where C : DbContext
     {
         private readonly BaseFixture<T> _fixture;
-        private readonly DbContextTest _dbContext;
-        private readonly DbContextOptions<DbContextTest> _options;
-        private readonly UserAuthContext _userAuthContext;
+        protected readonly C _dbContext;
+        protected readonly DbContextOptions<DbContext> _options;
+        protected readonly UserAuthContext _userAuthContext;
 
-        public BasicRepositoryTest(BaseFixture<T> fixture)
+        public ReadWithCompanyRepositoryTests(BaseFixture<T> fixture)
         {
             _fixture = fixture;
             _userAuthContext = _fixture.CreateUserAuthContext();
 
-            _options = new DbContextOptionsBuilder<DbContextTest>()
+            _options = new DbContextOptionsBuilder<DbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .EnableSensitiveDataLogging()
             .Options;
 
             _dbContext = (C)Activator.CreateInstance(typeof(C), _options);
@@ -51,7 +51,7 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
 
             mockRepository.Protected()
                 .Verify(
-                "ApplyFiltersWithCompanyIdWrapper", 
+                "ApplyFiltersWithCompanyIdWrapper",
                 Times.Once(),
                 ItExpr.IsAny<IQueryable<T>>(),
                 ItExpr.IsAny<IEnumerable<FilterParam>>(),
@@ -111,7 +111,7 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
         [InlineData(1)]
         [InlineData(3)]
         [InlineData(6)]
-        public async Task GetByIdAsync_WhenAnyExceptionIsThrown(long id)
+        public async Task GetByIdAsync_WhenAnyExceptionIsThrownInApplyFiltersWithCompanyIdWrapper_ThrowsUnexpectedException(long id)
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -275,7 +275,7 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
         [InlineData("id", "eq", 1)]
         [InlineData("id", "eq", 3)]
         [InlineData("id", "in", "6")]
-        public async Task GetAsync_WhenAnyExceptionIsThrownInApplyFiltersWithCompanyIdWrapper(string field, string op, object value)
+        public async Task GetAsync_WhenAnyExceptionIsThrownInApplyFiltersWithCompanyIdWrapper_ThrowsUnexpectedException(string field, string op, object value)
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -325,7 +325,7 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
         [InlineData("id", "eq", 1)]
         [InlineData("id", "eq", 3)]
         [InlineData("id", "in", "6")]
-        public async Task GetAsync_WhenAnyExceptionIsThrownInApplySortingWrapper(string field, string op, object value)
+        public async Task GetAsync_WhenAnyExceptionIsThrownInApplySortingWrapper_ThrowsUnexpectedException(string field, string op, object value)
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -375,7 +375,7 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
         [InlineData("id", "eq", 1)]
         [InlineData("id", "eq", 3)]
         [InlineData("id", "in", "6")]
-        public async Task GetAsync_WhenAnyExceptionIsThrownInNormalizePagingWrapper(string field, string op, object value)
+        public async Task GetAsync_WhenAnyExceptionIsThrownInNormalizePagingWrapper_ThrowsUnexpectedException(string field, string op, object value)
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -419,373 +419,6 @@ namespace Orcamentaria.EquipmentService.Test.Repositories
                 ItExpr.IsAny<int>(),
                 ItExpr.IsAny<int>(),
                 ItExpr.IsAny<int>());
-        }
-        #endregion
-
-        #region InsertAsync
-        [Fact]
-        public async Task InsertAsync_WhenValidBody_ReturnsEntity()
-        {
-            var entityInsert = _fixture.CreateEntity(0);
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            var result = await mockRepository.Object.InsertAsync(entityInsert);
-
-            result.Should().NotBeNull();
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-
-        [Fact]
-        public async Task InsertAsync_WhenDbUpdateExceptionIsThrows()
-        {
-            var entityInsert = _fixture.CreateEntity(0);
-
-            _dbContext.IsDbUpdateExceptionSaveChangesAsync = true;
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.InsertAsync(entityInsert);
-
-            var exception = await act.Should().ThrowAsync<DatabaseException>();
-            exception.Which.ErrorCode.Should().Be((int)ErrorCodeEnum.DatabaseError);
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-
-        [Fact]
-        public async Task InsertAsync_WhenExceptionIsThrows()
-        {
-            var entityInsert = _fixture.CreateEntity(0);
-
-            _dbContext.IsExceptionSaveChangesAsync = true;
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.InsertAsync(entityInsert);
-
-            var exception = await act.Should().ThrowAsync<DatabaseException>();
-            exception.Which.ErrorCode.Should().Be((int)ErrorCodeEnum.DatabaseError);
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-        #endregion
-
-        #region UpdateAsync
-        [Fact]
-        public async Task UpdateAsync_WhenValidBody_ReturnsEntity()
-        {
-            var entityUpdate = _fixture.CreateEntity(1);
-
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1);
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            var result = await mockRepository.Object.UpdateAsync(1, entityUpdate);
-
-            result.Should().NotBeNull();
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-
-        [Fact]
-        public async Task UpdateAsync_WhenIdNotFound_ThrowsKeyNotFoundException()
-        {
-            var entityUpdate = _fixture.CreateEntity(1);
-
-            await _fixture.SeedInMemoryDatabase(_dbContext, 2);
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.UpdateAsync(1, entityUpdate);
-
-            var exception = await act.Should().ThrowAsync<KeyNotFoundException>();
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Never(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Never(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Never(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Never(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Never(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-
-        [Fact]
-        public async Task UpdateAsync_WhenDbUpdateExceptionIsThrows()
-        {
-            var entityUpdate = _fixture.CreateEntity(1);
-
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1);
-
-            _dbContext.IsDbUpdateExceptionSaveChangesAsync = true;
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.UpdateAsync(1, entityUpdate);
-
-            var exception = await act.Should().ThrowAsync<DatabaseException>();
-            exception.Which.ErrorCode.Should().Be((int)ErrorCodeEnum.DatabaseError);
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-
-        [Fact]
-        public async Task UpdateAsync_WhenExceptionIsThrows()
-        {
-            var entityUpdate = _fixture.CreateEntity(1);
-
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1);
-
-            _dbContext.IsExceptionSaveChangesAsync = true;
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.UpdateAsync(1, entityUpdate);
-
-            var exception = await act.Should().ThrowAsync<DatabaseException>();
-            exception.Which.ErrorCode.Should().Be((int)ErrorCodeEnum.DatabaseError);
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "companyid"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "createdby"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedat"));
-
-            mockRepository.Protected()
-                .Verify(
-                "HasFieldMapWrapper",
-                Times.Once(),
-                ItExpr.Is<string>(x => x.ToLower() == "updatedby"));
-        }
-        #endregion
-
-        #region DeleteAsync
-        [Xunit.Theory]
-        [InlineData(1)]
-        [InlineData(3)]
-        [InlineData(6)]
-        public async Task DeleteAsync_WhenIdFound(long id)
-        {
-            await _fixture.SeedInMemoryDatabase(_dbContext, id);
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            var result = await mockRepository.Object.DeleteAsync(id);
-
-            result.Should().NotBeNull();
-        }
-
-        [Xunit.Theory]
-        [InlineData(1)]
-        [InlineData(3)]
-        [InlineData(6)]
-        public async Task DeleteAsync_WhenIdNotFound(long id)
-        {
-            await _fixture.SeedInMemoryDatabase(_dbContext, 999);
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.DeleteAsync(id);
-
-            var exception = await act.Should().ThrowAsync<KeyNotFoundException>();
-        }
-
-        [Xunit.Theory]
-        [InlineData(1)]
-        [InlineData(3)]
-        [InlineData(6)]
-        public async Task DeleteAsync_WhenExceptionIsThrows(long id)
-        {
-            await _fixture.SeedInMemoryDatabase(_dbContext, id);
-
-            _dbContext.IsExceptionSaveChangesAsync = true;
-
-            var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
-
-            Func<Task> act = async () => await mockRepository.Object.DeleteAsync(id);
-
-            var exception = await act.Should().ThrowAsync<DatabaseException>();
         }
         #endregion
     }

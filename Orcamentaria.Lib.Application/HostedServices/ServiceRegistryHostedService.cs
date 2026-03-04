@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
 using Orcamentaria.Lib.Domain.Enums;
 using Orcamentaria.Lib.Domain.Exceptions;
