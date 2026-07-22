@@ -43,7 +43,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var result = await mockRepository.Object.GetByIdAsync(id);
 
@@ -66,7 +66,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var result = await mockRepository.Object.GetByIdAsync(id);
 
@@ -92,7 +92,7 @@ namespace Orcamentaria.Lib.Test.Repositories
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var result = await mockRepository.Object.GetByIdAsync(id);
 
@@ -115,7 +115,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             mockRepository.Protected()
             .Setup<IQueryable<T>>(
@@ -150,7 +150,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 
@@ -192,7 +192,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 
@@ -237,7 +237,7 @@ namespace Orcamentaria.Lib.Test.Repositories
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 
@@ -279,7 +279,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 
@@ -329,7 +329,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 
@@ -379,7 +379,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1, 3, 6);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1, 3, 6);
 
             var gridParams = _fixture.CreateGridParamsWithOneFilter(new FilterParam { Field = field, Operator = op, Value = value });
 

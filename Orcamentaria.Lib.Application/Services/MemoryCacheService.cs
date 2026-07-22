@@ -1,47 +1,44 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
-using Orcamentaria.Lib.Domain.Exceptions;
 using Orcamentaria.Lib.Domain.Services;
 
 namespace Orcamentaria.Lib.Application.Services
 {
-    public class MemoryCacheService : IMemoryCacheService
+    public class MemoryCacheService : ICacheService
     {
-        private readonly IMemoryCache _memoryCache;
+        private readonly IMemoryCache _cache;
 
-        public MemoryCacheService(IMemoryCache memoryCache)
+        public MemoryCacheService(IMemoryCache cache) => _cache = cache;
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
         {
-            _memoryCache = memoryCache;
+            _cache.TryGetValue(key, out T? value);
+            return Task.FromResult(value);
         }
 
-        public bool GetMemoryCache(string cacheKey, out string? returnValue)
+        public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default)
         {
-            try
-            {
-                if (_memoryCache.TryGetValue(cacheKey, out string? tokenCache))
-                {
-                    returnValue = tokenCache;
-                    return true;
-                }
+            var options = new MemoryCacheEntryOptions();
+            if (expiration.HasValue)
+                options.SetAbsoluteExpiration(expiration.Value);
 
-                returnValue = null;
-                return false;
-            }
-            catch (Exception ex)
-            {
-                throw new UnexpectedException(ex.Message, ex);
-            }
+            _cache.Set(key, value, options);
+            return Task.CompletedTask;
         }
 
-        public void SetMemoryCache(string cacheKey, string value)
+        public Task RemoveAsync(string key, CancellationToken ct = default)
         {
-            try
-            {
-                _memoryCache.Set(cacheKey, value);
-            }
-            catch (Exception ex)
-            {
-                throw new UnexpectedException(ex.Message, ex);
-            }
+            _cache.Remove(key);
+            return Task.CompletedTask;
+        }
+
+        public async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null, CancellationToken ct = default)
+        {
+            if (_cache.TryGetValue(key, out T? cached) && cached is not null)
+                return cached;
+
+            var value = await factory();
+            await SetAsync(key, value, expiration, ct);
+            return value;
         }
     }
 }

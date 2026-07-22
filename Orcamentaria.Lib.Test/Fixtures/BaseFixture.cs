@@ -97,10 +97,18 @@ namespace Orcamentaria.Lib.Test.Fixtures
 
         public virtual extern T CreateEntity(long id);
 
-        public async Task SeedInMemoryDatabase(DbContext dbContext, params long[] ids)
+        public async Task SeedInMemoryDatabaseWithIds(DbContext dbContext, params long[] ids)
         {
             foreach (var id in ids)
                 dbContext.Set<T>().Add(CreateEntity(id));
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        public async Task SeedInMemoryDatabaseWithEntities(DbContext dbContext, params T[] entities)
+        {
+            foreach (var entity in entities)
+                dbContext.Set<T>().Add(entity);
 
             await dbContext.SaveChangesAsync();
         }

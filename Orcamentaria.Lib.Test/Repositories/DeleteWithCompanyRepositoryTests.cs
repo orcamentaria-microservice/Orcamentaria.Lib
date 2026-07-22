@@ -42,7 +42,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         [InlineData(6)]
         public async Task DeleteAsync_WhenIdFound_ReturnData(long id)
         {
-            await _fixture.SeedInMemoryDatabase(_dbContext, id);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, id);
             _dbContext.ChangeTracker.Clear();
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
@@ -66,7 +66,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         [InlineData(6)]
         public async Task DeleteAsync_WhenIdNotFound_ThrowNotFoundException(long id)
         {
-            await _fixture.SeedInMemoryDatabase(_dbContext, 999);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 999);
             _dbContext.ChangeTracker.Clear();
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
@@ -93,7 +93,7 @@ namespace Orcamentaria.Lib.Test.Repositories
             var userAuthContext = _fixture.CreateUserAuthContext();
             userAuthContext.CompanyId = 99999;
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, id);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, id);
             _dbContext.ChangeTracker.Clear();
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, userAuthContext) { CallBase = true };
@@ -118,7 +118,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         [InlineData(6)]
         public async Task DeleteAsync_WhenAnyExceptionIsThrownInApplyFiltersWithCompanyIdWrapper_ThrowsUnexpectedException(long id)
         {
-            await _fixture.SeedInMemoryDatabase(_dbContext, id);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, id);
             _dbContext.ChangeTracker.Clear();
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };

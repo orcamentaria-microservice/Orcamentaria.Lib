@@ -86,7 +86,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var entityUpdate = _fixture.CreateEntity(1);
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 1);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 1);
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -138,7 +138,7 @@ namespace Orcamentaria.Lib.Test.Repositories
         {
             var entityUpdate = _fixture.CreateEntity(1);
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 2);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 2);
 
             var mockRepository = new Mock<BaseRepository<T>>(_dbContext, _userAuthContext) { CallBase = true };
 
@@ -196,7 +196,7 @@ namespace Orcamentaria.Lib.Test.Repositories
 
             var entityUpdate = _fixture.CreateEntity(1);
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 2);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 2);
 
             Func<Task> act = async () => await mockRepository.Object.UpdateAsync(1, entityUpdate);
 
@@ -257,7 +257,7 @@ namespace Orcamentaria.Lib.Test.Repositories
                     ItExpr.IsAny<long>())
                 .Throws(new Exception());
 
-            await _fixture.SeedInMemoryDatabase(_dbContext, 2);
+            await _fixture.SeedInMemoryDatabaseWithIds(_dbContext, 2);
 
             Func<Task> act = async () => await mockRepository.Object.UpdateAsync(1, entityUpdate);
 

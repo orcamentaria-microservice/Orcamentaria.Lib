@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Application.Services;
 using Orcamentaria.Lib.Domain.DTOs.Authentication;
 using Orcamentaria.Lib.Domain.Enums;
@@ -15,13 +16,13 @@ namespace Orcamentaria.Lib.Application.Providers
         private readonly ServiceConfiguration _serviceConfiguration;
         private readonly IApiGetawayService _apiGetawayService;
         private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
-        private readonly IMemoryCacheService _memoryCacheService;
+        private readonly ICacheService _memoryCacheService;
 
         public ServiceTokenProvider(
             IOptions<ServiceConfiguration> serviceConfiguration,
             IApiGetawayService apiGetawayService,
             IOptions<ApiGetawayConfiguration> apiGetawayConfiguration,
-            IMemoryCacheService memoryCacheService)
+            [FromKeyedServices("memory")] ICacheService memoryCacheService)
         {
             _serviceConfiguration = serviceConfiguration.Value;
             _apiGetawayService = apiGetawayService;
@@ -33,7 +34,9 @@ namespace Orcamentaria.Lib.Application.Providers
         {
             try
             {
-                if (forceTokenGeneration || !_memoryCacheService.GetMemoryCache(TOKEN_KEY, out string? tokenService))
+                var tokenService = forceTokenGeneration ? null : await _memoryCacheService.GetAsync<string>(TOKEN_KEY);
+
+                if (forceTokenGeneration || string.IsNullOrWhiteSpace(tokenService))
                 {
                     var resource = new ResourceConfiguration
                     {
@@ -60,7 +63,7 @@ namespace Orcamentaria.Lib.Application.Providers
                     if (String.IsNullOrWhiteSpace(tokenService))
                         throw new UnexpectedException("Falha ao gerar o token.", ErrorCodeEnum.InternalError);
 
-                    _memoryCacheService.SetMemoryCache(TOKEN_KEY, tokenService);
+                    await _memoryCacheService.SetAsync(TOKEN_KEY, tokenService);
                 }
                 return tokenService;
             }

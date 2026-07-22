@@ -1,5 +1,6 @@
 ﻿ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orcamentaria.Lib.Domain.DTOs.ServiceRegistry;
@@ -18,7 +19,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
     public class ServiceRegistryHostedService : IServiceRegistryHostedService, IHostedService
     {
         private readonly IServiceRegistryService _serviceRegistryService;
-        private readonly IMemoryCacheService _memoryCacheService;
+        private readonly ICacheService _memoryCacheService;
         private readonly ILogService _logService;
         private readonly ApiGetawayConfiguration _apiGetawayConfiguration;
         private readonly ServiceConfiguration _serviceConfiguration;
@@ -27,7 +28,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
         private readonly HttpClient _httpClient;
 
         public ServiceRegistryHostedService(
-            IMemoryCacheService memoryCacheService,
+            [FromKeyedServices("memory")] ICacheService memoryCacheService,
             ILogService logService,
             IServiceRegistryService serviceRegistryService,
             IOptions<ServiceConfiguration> serviceConfiguration,
@@ -92,7 +93,7 @@ namespace Orcamentaria.Lib.Application.HostedServices
                     if (result.Success)
                     {
                         requestFailed = false;
-                        _memoryCacheService.SetMemoryCache($"{_serviceConfiguration.ServiceName}_key", result.Data);
+                        await _memoryCacheService.SetAsync($"{_serviceConfiguration.ServiceName}_key", result.Data);
                         break;
                     }
 
@@ -121,7 +122,9 @@ namespace Orcamentaria.Lib.Application.HostedServices
         {
             try
             {
-                if (!_memoryCacheService.GetMemoryCache($"{_serviceConfiguration.ServiceName}_key", out string serviceId))
+                var serviceId = await _memoryCacheService.GetAsync<string>($"{_serviceConfiguration.ServiceName}_key");
+
+                if (string.IsNullOrWhiteSpace(serviceId))
                     throw new BusinessException("Falha para obter o ID do serviço. Não é foi enviar o heartbeat ao Service Registry", ErrorCodeEnum.NotFound);
 
                 while (true)

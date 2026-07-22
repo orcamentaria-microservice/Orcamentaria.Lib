@@ -166,7 +166,8 @@ namespace Orcamentaria.Lib.Infrastructure.Configures
             services.AddSingleton<ILogService, LogService>();
             services.AddSingleton<IPublishMessageBrokerService, RabbitMqPublishService>();
             services.AddSingleton<ITokenProvider, ServiceTokenProvider>();
-            services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
+            services.AddKeyedSingleton<ICacheService, MemoryCacheService>("memory");
+            services.AddKeyedSingleton<ICacheService, RedisCacheService>("redis");
             services.AddSingleton<IRsaService, RsaService>();
             services.AddSingleton<IApiGetawayService, ApiGetawayService>();
             services.AddSingleton<IServiceRegistryService, ServiceRegistryService>();
