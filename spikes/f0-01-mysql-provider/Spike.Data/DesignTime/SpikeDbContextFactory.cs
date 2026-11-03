@@ -21,9 +21,12 @@ public sealed class SpikeDbContextFactory : IDesignTimeDbContextFactory<SpikeDbC
     // Versão fixada conforme §6.3 — sem auto-detect para garantir SQL determinístico.
     // Formato esperado pelo Oracle provider: sem "ServerVersion", apenas a connection string.
     // A versão do servidor é implícita na connection string com "AllowPublicKeyRetrieval=true".
+    // Oracle MySQL connector: SslMode aceita "Disabled" (não "None" como no Pomelo).
+    // ACHADO DO SPIKE: "SslMode=None" lança "Requested value 'None' was not found."
+    // — usar sempre "SslMode=Disabled" para desabilitar TLS em dev/design-time.
     private const string DesignTimeConnectionString =
         "Server=127.0.0.1;Port=3306;Database=spike_design;Uid=root;Pwd=spike_design_only;" +
-        "AllowPublicKeyRetrieval=true;SslMode=None;";
+        "AllowPublicKeyRetrieval=true;SslMode=Disabled;";
 
     public SpikeDbContext CreateDbContext(string[] args)
     {

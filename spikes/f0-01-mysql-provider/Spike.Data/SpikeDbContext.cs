@@ -45,6 +45,8 @@ public sealed class SpikeDbContext : DbContext
         );
     public DbSet<SpikeEntity>   SpikeEntities  { get; set; } = null!;
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+    public DbSet<SpikeCounter>  SpikeCounters  { get; set; } = null!;   // critério 7
+    public DbSet<SpikeReplica>  SpikeReplicas  { get; set; } = null!;   // critério 8
 
     public SpikeDbContext(DbContextOptions<SpikeDbContext> options)
         : base(options) { }
@@ -57,6 +59,8 @@ public sealed class SpikeDbContext : DbContext
 
         ConfigureSpikeEntity(modelBuilder);
         ConfigureOutboxMessage(modelBuilder);
+        ConfigureSpikeCounter(modelBuilder);
+        ConfigureSpikeReplica(modelBuilder);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -142,7 +146,7 @@ public sealed class SpikeDbContext : DbContext
     }
 
     // ──────────────────────────────────────────────────────────────
-    // OutboxMessage — tabela para critérios 6 e 7 (T02)
+    // OutboxMessage — tabela para critério 6 (relay SKIP LOCKED)
     // ──────────────────────────────────────────────────────────────
     private static void ConfigureOutboxMessage(ModelBuilder modelBuilder)
     {
@@ -181,6 +185,52 @@ public sealed class SpikeDbContext : DbContext
             // aparecem primeiro na ordem de ID — suporta a query de relay do critério 6.
             entity.HasIndex(e => new { e.PublishedAt, e.Id })
                   .HasDatabaseName("IX_OUTBOX_PENDING");
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // SpikeCounter — tabela para critério 7 (FOR UPDATE serializa incrementos)
+    // ──────────────────────────────────────────────────────────────
+    private static void ConfigureSpikeCounter(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SpikeCounter>(entity =>
+        {
+            entity.ToTable("T_SPIKE_COUNTER");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                  .HasColumnName("ID")
+                  .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.Value)
+                  .HasColumnName("VALUE")
+                  .IsRequired();
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // SpikeReplica — tabela para critério 8 (upsert condicional)
+    // ──────────────────────────────────────────────────────────────
+    private static void ConfigureSpikeReplica(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SpikeReplica>(entity =>
+        {
+            entity.ToTable("T_SPIKE_REPLICA");
+
+            entity.HasKey(e => e.Id);
+            // ID vem do serviço de origem — a aplicação gerencia o valor (não AUTO_INCREMENT).
+            entity.Property(e => e.Id)
+                  .HasColumnName("ID")
+                  .ValueGeneratedNever();
+
+            entity.Property(e => e.Data)
+                  .HasColumnName("DATA")
+                  .HasMaxLength(255)
+                  .IsRequired();
+
+            entity.Property(e => e.SourceVersion)
+                  .HasColumnName("SOURCE_VERSION")
+                  .IsRequired();
         });
     }
 }
