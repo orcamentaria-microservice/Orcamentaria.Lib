@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk"       Version="18.11.0" />
+    <PackageReference Include="xunit"                        Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio"    Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector"           Version="10.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions"             Version="8.11.0" />
+
+    <!--
+      Testcontainers.MySql inicia um container mysql:8.0 via Docker API.
+      REQUISITO: Docker (ou Podman com socket compatível) deve estar instalado e rodando.
+      Sem Docker, os testes de integração falharão na fase de fixture com
+      "Docker is not available" — não é falha do provider.
+    -->
+    <PackageReference Include="Testcontainers.MySql"         Version="4.16.0" />
+
+    <!-- Design-time necessário quando o DbContext é referenciado fora do pacote Data -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spike.Data\Spike.Data.csproj" />
+  </ItemGroup>
+
+</Project>

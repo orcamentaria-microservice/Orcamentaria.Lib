@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Spike descartável: não gera pacote NuGet -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Critério 1: pacote estável (sem -preview / -rc) compatível com EF Core 10 e net10.0.
+      MySql.EntityFrameworkCore 10.0.12 (Oracle) publicado em 2026-10-21, listado como estável no nuget.org,
+      com TFM net10.0 + dependência em Microsoft.EntityFrameworkCore [10.0.12, ).
+    -->
+    <PackageReference Include="MySql.EntityFrameworkCore"          Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore"       Version="10.0.14" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.14" />
+
+    <!--
+      Design-time: necessário para 'dotnet ef migrations add' (usado na T02).
+      PrivateAssets=all garante que não vaza para o consumidor.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
