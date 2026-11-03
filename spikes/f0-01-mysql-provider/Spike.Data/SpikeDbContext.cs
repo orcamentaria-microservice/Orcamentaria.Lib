@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Spike.Data.Entities;
 
 namespace Spike.Data;
@@ -9,9 +10,39 @@ namespace Spike.Data;
 /// Todos os mapeamentos estão inline aqui (sem EntityTypeConfiguration separada)
 /// porque o spike é descartável. Em código de produção cada entidade teria
 /// sua própria IEntityTypeConfiguration&lt;T&gt;.
+///
+/// ACHADO DO SPIKE (critério 3):
+///   O provider Oracle MySQL (MySql.EntityFrameworkCore) retorna DateTimeKind.Unspecified
+///   para colunas DATETIME(6) — MySQL não armazena fuso horário, e o provider não aplica
+///   SpecifyKind automaticamente. A solução padrão é um ValueConverter que:
+///     • escrita: garante que o valor é UTC (rejeita Unspecified com throw)
+///     • leitura: aplica DateTime.SpecifyKind(v, DateTimeKind.Utc)
+///   No F0-02, este converter será extraído para a Lib como UtcDateTimeConverter.
 /// </summary>
 public sealed class SpikeDbContext : DbContext
 {
+    /// <summary>
+    /// Converter reutilizável para colunas DATETIME(6) que devem ser UTC.
+    ///
+    /// Escrita: rejeita DateTimeKind.Local (convertendo para UTC) e aceita Utc/Unspecified.
+    /// Leitura: aplica SpecifyKind(Utc) para que o valor retornado sempre seja Utc.
+    ///
+    /// No F0-02 este conversor será extraído para UtcDateTimeConverter na Lib.
+    /// </summary>
+    private static readonly ValueConverter<DateTime, DateTime> UtcDateTimeConverter =
+        new(
+            // escrita → banco: normaliza para UTC se Local
+            v => v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : v,
+            // leitura ← banco: garante Kind=Utc sempre
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+        );
+
+    /// <summary>Nullable variant do mesmo converter.</summary>
+    private static readonly ValueConverter<DateTime?, DateTime?> UtcDateTimeNullableConverter =
+        new(
+            v => v == null ? (DateTime?)null : v.Value.Kind == DateTimeKind.Local ? v.Value.ToUniversalTime() : v,
+            v => v == null ? (DateTime?)null : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
+        );
     public DbSet<SpikeEntity>   SpikeEntities  { get; set; } = null!;
     public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
 
@@ -47,12 +78,13 @@ public sealed class SpikeDbContext : DbContext
                   .HasColumnName("PRICE")
                   .HasPrecision(18, 4);
 
-            // Critério 3: DATETIME(6) UTC
-            // O tipo DATETIME(6) preserva microssegundos; o round-trip exato é validado
-            // forçando DateTimeKind.Utc antes de salvar (veja MappingRoundTripTests).
+            // Critério 3: DATETIME(6) UTC com ValueConverter
+            // O provider Oracle não aplica SpecifyKind automaticamente (ACHADO DO SPIKE).
+            // O UtcDateTimeConverter garante Kind=Utc em todas as leituras.
             entity.Property(e => e.CreatedAt)
                   .HasColumnName("CREATED_AT")
-                  .HasColumnType("DATETIME(6)");
+                  .HasColumnType("DATETIME(6)")
+                  .HasConversion(UtcDateTimeConverter);
 
             // Critério 3: bool ↔ TINYINT(1)
             entity.Property(e => e.IsActive)
@@ -94,10 +126,11 @@ public sealed class SpikeDbContext : DbContext
                   .HasDatabaseName("UX_SPIKE_ENTITY_TENANT_KEY");
 
             // Critério 4: check constraint — preço deve ser positivo.
+            // EF Core 10: API migrou para ToTable(t => t.HasCheckConstraint(...)).
             // Violação lança DbUpdateException (não DbUpdateConcurrencyException).
-            entity.HasCheckConstraint(
+            entity.ToTable(t => t.HasCheckConstraint(
                 name: "CK_SPIKE_ENTITY_PRICE_POSITIVE",
-                sql: "`PRICE` > 0");
+                sql:  "`PRICE` > 0"));
 
             // Critério 5: VERSION como token de concorrência otimista.
             // A aplicação é responsável por incrementar Version antes de cada Update.
@@ -135,11 +168,13 @@ public sealed class SpikeDbContext : DbContext
 
             entity.Property(e => e.CreatedAt)
                   .HasColumnName("CREATED_AT")
-                  .HasColumnType("DATETIME(6)");
+                  .HasColumnType("DATETIME(6)")
+                  .HasConversion(UtcDateTimeConverter);
 
             entity.Property(e => e.PublishedAt)
                   .HasColumnName("PUBLISHED_AT")
                   .HasColumnType("DATETIME(6)")
+                  .HasConversion(UtcDateTimeNullableConverter)
                   .IsRequired(false);
 
             // Índice parcial lógico: registros pendentes (PUBLISHED_AT IS NULL)

@@ -71,12 +71,16 @@ public sealed class MappingRoundTripTests
         loaded.Price.Should().Be(price,
             because: "DECIMAL(18,4) deve preservar 12345.6789m sem arredondamento");
 
-        // DATETIME(6) UTC: EF Core preserva microssegundos; arredondamento para µs é esperado
+        // DATETIME(6) UTC: EF Core preserva microssegundos; arredondamento para µs é esperado.
+        // ACHADO DO SPIKE: o provider Oracle retorna DateTimeKind.Unspecified sem converter.
+        // A solução (SpikeDbContext.UtcDateTimeConverter) aplica SpecifyKind(Utc) na leitura.
+        // Com o converter ativo, o valor retorna como Utc.
         var expectedTicks = createdAt.Ticks - (createdAt.Ticks % TimeSpan.TicksPerMicrosecond);
         loaded.CreatedAt.Ticks.Should().Be(expectedTicks,
             because: "DATETIME(6) tem precisão de 1µs — arredondamento abaixo de 1µs é esperado");
         loaded.CreatedAt.Kind.Should().Be(DateTimeKind.Utc,
-            because: "o valor deve voltar como UTC para evitar erros de fuso");
+            because: "UtcDateTimeConverter em SpikeDbContext aplica SpecifyKind(Utc) na leitura " +
+                     "(sem converter, o provider Oracle retorna DateTimeKind.Unspecified — ver achado no README)");
 
         // bool ↔ TINYINT(1)
         loaded.IsActive.Should().BeTrue(
