@@ -83,8 +83,13 @@ logs/
 
 ## Secrets
 secrets.json
+secrets/
 appsettings.Development.json
 appsettings.Local.json
+appsettings.*.local.json
+.env
+.env.*
+!.env.example
 
 ## Temporary files
 *.tmp
